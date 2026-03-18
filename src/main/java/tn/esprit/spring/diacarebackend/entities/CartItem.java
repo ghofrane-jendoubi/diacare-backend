@@ -3,18 +3,20 @@ package tn.esprit.spring.diacarebackend.entities;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.util.List;
-
 @Entity
 @Data
-public class Category {
+public class CartItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @ManyToOne
+    private Product product;
 
-    @OneToMany(mappedBy = "category")
-    private List<Product> products;
+    private int quantity;
+
+    public void setProduct(Product product) { this.product = product;}
+    @ManyToOne
+    private Cart cart;
 }

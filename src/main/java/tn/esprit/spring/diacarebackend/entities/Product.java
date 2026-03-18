@@ -3,7 +3,6 @@ package tn.esprit.spring.diacarebackend.entities;
 import jakarta.persistence.*;
 import lombok.Data;
 
-public class Product {
     @Entity
     @Data
     public class Product {
@@ -28,5 +27,5 @@ public class Product {
         @ManyToOne
         private Category category;
     }
-}
+
 
