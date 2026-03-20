@@ -7,8 +7,8 @@ import tn.esprit.spring.diacarebackend.services.FoodEntryService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/food")
-@CrossOrigin(origins = "http://localhost:4200")
+@RequestMapping("/api/foods")
+@CrossOrigin(origins = "*")
 public class FoodEntryController {
 
     private final FoodEntryService service;
@@ -17,14 +17,13 @@ public class FoodEntryController {
         this.service = service;
     }
 
+
     // ✅ ajout
     @PostMapping
-    public FoodEntry add(@RequestParam String text,
-                         @RequestParam Long patientId) {
-        return service.addEntry(text, patientId);
+    public FoodEntry add(@RequestBody FoodEntryRequest request) {
+        return service.addEntry(request.getText(), request.getPatientId());
     }
 
-    // ✅ afficher
     @GetMapping
     public List<FoodEntry> getAll() {
         return service.getAll();

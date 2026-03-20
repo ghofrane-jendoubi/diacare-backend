@@ -13,7 +13,7 @@ public class AIService {
 
     public String analyzeFood(String text) {
 
-        String url = "http://localhost:5000/detect-food";
+        String url = "http://localhost:5000/api/detect-foods";
 
         Map<String, String> request = new HashMap<>();
         request.put("text", text);
