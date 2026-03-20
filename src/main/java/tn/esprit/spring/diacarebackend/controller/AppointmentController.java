@@ -1,0 +1,129 @@
+package tn.esprit.spring.diacarebackend.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import tn.esprit.spring.diacarebackend.entities.Appointment;
+import tn.esprit.spring.diacarebackend.entities.User;
+import tn.esprit.spring.diacarebackend.repository.AppointmentRepository;
+import tn.esprit.spring.diacarebackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/appointments")
+@CrossOrigin(origins = "http://localhost:4200")
+public class AppointmentController {
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @GetMapping("/doctor/{doctorId}")
+    public ResponseEntity<List<Appointment>> getDoctorAppointments(@PathVariable Long doctorId) {
+        List<Appointment> appointments = appointmentRepository.findByDoctorId(doctorId);
+        return ResponseEntity.ok(appointments);
+    }
+
+    @GetMapping("/doctor/{doctorId}/patients")
+    public ResponseEntity<List<User>> getPatientsWithConversations(@PathVariable Long doctorId) {
+        List<User> patients = appointmentRepository.findPatientsWithConversations(doctorId);
+        return ResponseEntity.ok(patients);
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<Appointment> createAppointment(@RequestBody AppointmentRequest request) {
+        User doctor = userRepository.findById(request.getDoctorId())
+                .orElseThrow(() -> new RuntimeException("Doctor not found"));
+        User patient = userRepository.findById(request.getPatientId())
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+
+        Appointment appointment = new Appointment();
+        appointment.setDoctor(doctor);
+        appointment.setPatient(patient);
+        appointment.setPatientName(request.getPatientName());
+        appointment.setTitle(request.getTitle());
+        appointment.setStartTime(request.getStart());
+        appointment.setEndTime(request.getEnd());
+        appointment.setDescription(request.getDescription());
+        appointment.setType(request.getType());
+        appointment.setMeetLink(request.getMeetLink());
+        appointment.setStatus(request.getStatus());
+
+        Appointment saved = appointmentRepository.save(appointment);
+        return ResponseEntity.ok(saved);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @RequestBody AppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+
+        appointment.setTitle(request.getTitle());
+        appointment.setStartTime(request.getStart());
+        appointment.setEndTime(request.getEnd());
+        appointment.setDescription(request.getDescription());
+        appointment.setType(request.getType());
+        appointment.setMeetLink(request.getMeetLink());
+        appointment.setStatus(request.getStatus());
+
+        Appointment updated = appointmentRepository.save(appointment);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> deleteAppointment(@PathVariable Long id) {
+        appointmentRepository.deleteById(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Appointment deleted successfully");
+        return ResponseEntity.ok(response);
+    }
+}
+
+class AppointmentRequest {
+    private Long doctorId;
+    private Long patientId;
+    private String patientName;
+    private String title;
+    private LocalDateTime start;
+    private LocalDateTime end;
+    private String description;
+    private String type;
+    private String meetLink;
+    private String status;
+
+    // Getters et setters
+    public Long getDoctorId() { return doctorId; }
+    public void setDoctorId(Long doctorId) { this.doctorId = doctorId; }
+
+    public Long getPatientId() { return patientId; }
+    public void setPatientId(Long patientId) { this.patientId = patientId; }
+
+    public String getPatientName() { return patientName; }
+    public void setPatientName(String patientName) { this.patientName = patientName; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public LocalDateTime getStart() { return start; }
+    public void setStart(LocalDateTime start) { this.start = start; }
+
+    public LocalDateTime getEnd() { return end; }
+    public void setEnd(LocalDateTime end) { this.end = end; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    public String getMeetLink() { return meetLink; }
+    public void setMeetLink(String meetLink) { this.meetLink = meetLink; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+}

@@ -1,51 +1,31 @@
 package tn.esprit.spring.diacarebackend.entities;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users")
+@Data
+@NoArgsConstructor
+@Inheritance(strategy = InheritanceType.JOINED)
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
+    private String firstName;
 
-    private String email;
+    private String lastName;
 
-    // Constructeur par défaut (obligatoire pour JPA)
-    public User() {}
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
-    // Constructeur avec paramètres (optionnel)
-    public User(String name, String email) {
-        this.name = name;
-        this.email = email;
-    }
-
-    // ===== GETTERS ET SETTERS =====
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
+    // Constructeur utile
+    public User(Long id, String firstName, String lastName) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 }
