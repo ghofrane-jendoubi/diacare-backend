@@ -6,6 +6,7 @@ import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
 import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -41,19 +42,43 @@ public class CommentController {
     }
 
     @PostMapping("/contents/{contentId}/comments")
+    @Transactional
     public ResponseEntity<CommentDTO> addComment(
             @PathVariable Long contentId,
             @RequestBody Map<String, Object> body) {
-        ContentComment comment = new ContentComment();
-        comment.setContentId(contentId);
-        comment.setUserId(1L);
-        comment.setUserName((String) body.get("userName"));
-        comment.setCommentText((String) body.get("commentText"));
-        if (body.get("parentCommentId") != null) {
-            comment.setParentCommentId(Long.valueOf(body.get("parentCommentId").toString()));
+
+        try {
+            System.out.println("=== Reçu commentaire pour contentId: " + contentId);
+            System.out.println("=== Body: " + body);
+
+            ContentComment comment = new ContentComment();
+            comment.setContentId(contentId);
+            comment.setUserId(1L);
+            comment.setUserName(body.get("userName") != null ?
+                    (String) body.get("userName") : "Patient");
+            comment.setCommentText((String) body.get("commentText"));
+
+            if (body.get("parentCommentId") != null) {
+                comment.setParentCommentId(
+                        Long.valueOf(body.get("parentCommentId").toString()));
+            }
+
+            ContentComment saved = commentRepo.save(comment);
+            System.out.println("=== Commentaire sauvegardé id: " + saved.getId());
+
+            try {
+                contentRepo.incrementCommentCount(contentId);
+            } catch (Exception e) {
+                System.err.println("Erreur incrementCommentCount: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok(toDTO(saved));
+
+        } catch (Exception e) {
+            System.err.println("=== ERREUR addComment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
-        contentRepo.incrementCommentCount(contentId);
-        return ResponseEntity.ok(toDTO(commentRepo.save(comment)));
     }
 
     private CommentDTO toDTO(ContentComment c) {

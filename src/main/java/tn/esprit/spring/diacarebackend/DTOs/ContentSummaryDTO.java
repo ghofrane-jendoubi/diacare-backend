@@ -58,4 +58,7 @@ public class ContentSummaryDTO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setIsLiked(Boolean isLiked) { this.isLiked = isLiked; }
     public void setIsBookmarked(Boolean isBookmarked) { this.isBookmarked = isBookmarked; }
+    private Boolean isPublished;
+    public Boolean getIsPublished() { return isPublished; }
+    public void setIsPublished(Boolean isPublished) { this.isPublished = isPublished; }
 }
