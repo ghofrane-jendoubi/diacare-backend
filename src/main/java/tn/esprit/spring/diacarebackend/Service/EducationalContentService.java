@@ -21,11 +21,11 @@ public class EducationalContentService {
     private final ContentCommentRepository commentRepo;
     private final ContentBookmarkRepository bookmarkRepo;
 
-    // Constructeur manuel
-    public EducationalContentService(EducationalContentRepository contentRepo,
-                                     ContentLikeRepository likeRepo,
-                                     ContentCommentRepository commentRepo,
-                                     ContentBookmarkRepository bookmarkRepo) {
+    public EducationalContentService(
+            EducationalContentRepository contentRepo,
+            ContentLikeRepository likeRepo,
+            ContentCommentRepository commentRepo,
+            ContentBookmarkRepository bookmarkRepo) {
         this.contentRepo = contentRepo;
         this.likeRepo = likeRepo;
         this.commentRepo = commentRepo;
@@ -39,15 +39,14 @@ public class EducationalContentService {
     }
 
     public Page<ContentSummaryDTO> getByCategory(String category, int page, int size, Long userId) {
-        PageRequest pageable = PageRequest.of(page, size);
-        EducationalContent.Category cat = EducationalContent.Category.valueOf(category.toUpperCase());
-        return contentRepo.findByCategoryAndIsPublishedTrue(cat, pageable)
+        EducationalContent.Category cat =
+                EducationalContent.Category.valueOf(category.toUpperCase());
+        return contentRepo.findByCategoryAndIsPublishedTrue(cat, PageRequest.of(page, size))
                 .map(c -> toSummaryDTO(c, userId));
     }
 
     public Page<ContentSummaryDTO> search(String keyword, int page, int size, Long userId) {
-        PageRequest pageable = PageRequest.of(page, size);
-        return contentRepo.searchContent(keyword, pageable)
+        return contentRepo.searchContent(keyword, PageRequest.of(page, size))
                 .map(c -> toSummaryDTO(c, userId));
     }
 
@@ -91,12 +90,16 @@ public class EducationalContentService {
 
     public List<ContentSummaryDTO> getFeaturedContents(Long userId) {
         return contentRepo.findByIsFeaturedTrueAndIsPublishedTrue()
-                .stream().map(c -> toSummaryDTO(c, userId)).collect(Collectors.toList());
+                .stream()
+                .map(c -> toSummaryDTO(c, userId))
+                .collect(Collectors.toList());
     }
 
     public List<ContentSummaryDTO> getMostViewed(Long userId) {
         return contentRepo.findTop5ByIsPublishedTrueOrderByViewCountDesc()
-                .stream().map(c -> toSummaryDTO(c, userId)).collect(Collectors.toList());
+                .stream()
+                .map(c -> toSummaryDTO(c, userId))
+                .collect(Collectors.toList());
     }
 
     public List<ContentSummaryDTO> getUserBookmarks(Long userId) {
@@ -107,26 +110,32 @@ public class EducationalContentService {
                 .collect(Collectors.toList());
     }
 
+    // ===== HELPERS =====
     private ContentSummaryDTO toSummaryDTO(EducationalContent c, Long userId) {
         ContentSummaryDTO dto = new ContentSummaryDTO();
         dto.setId(c.getId());
-        dto.setTitle(c.getTitle());
+        dto.setTitle(c.getTitle() != null ? c.getTitle() : "");
         dto.setSummary(c.getSummary());
-        dto.setCategory(c.getCategory().name());
-        dto.setContentType(c.getContentType().name());
+        dto.setCategory(c.getCategory() != null ? c.getCategory().name() : "");
+        dto.setContentType(c.getContentType() != null ? c.getContentType().name() : "ARTICLE");
         dto.setThumbnailUrl(c.getThumbnailUrl());
         dto.setAuthorName(c.getAuthorName());
-        dto.setViewCount(c.getViewCount());
-        dto.setLikeCount(c.getLikeCount());
-        dto.setCommentCount(c.getCommentCount());
-        dto.setReadingTime(c.getReadingTime());
-        dto.setDifficultyLevel(c.getDifficultyLevel().name());
-        dto.setIsFeatured(c.getIsFeatured());
+        dto.setViewCount(c.getViewCount() != null ? c.getViewCount() : 0L);
+        dto.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L);
+        dto.setCommentCount(c.getCommentCount() != null ? c.getCommentCount() : 0L);
+        dto.setReadingTime(c.getReadingTime() != null ? c.getReadingTime() : 5);
+        dto.setDifficultyLevel(c.getDifficultyLevel() != null ?
+                c.getDifficultyLevel().name() : "BEGINNER");
+        dto.setIsFeatured(c.getIsFeatured() != null ? c.getIsFeatured() : false);
         dto.setTags(c.getTags());
         dto.setCreatedAt(c.getCreatedAt());
+        dto.setIsPublished(c.getIsPublished());
         if (userId != null) {
             dto.setIsLiked(likeRepo.existsByContentIdAndUserId(c.getId(), userId));
             dto.setIsBookmarked(bookmarkRepo.existsByContentIdAndUserId(c.getId(), userId));
+        } else {
+            dto.setIsLiked(false);
+            dto.setIsBookmarked(false);
         }
         return dto;
     }
@@ -134,26 +143,30 @@ public class EducationalContentService {
     private ContentDTO toDetailDTO(EducationalContent c, Long userId) {
         ContentDTO dto = new ContentDTO();
         dto.setId(c.getId());
-        dto.setTitle(c.getTitle());
+        dto.setTitle(c.getTitle() != null ? c.getTitle() : "");
         dto.setSubtitle(c.getSubtitle());
         dto.setContent(c.getContent());
         dto.setSummary(c.getSummary());
-        dto.setCategory(c.getCategory().name());
-        dto.setContentType(c.getContentType().name());
+        dto.setCategory(c.getCategory() != null ? c.getCategory().name() : "");
+        dto.setContentType(c.getContentType() != null ? c.getContentType().name() : "ARTICLE");
         dto.setThumbnailUrl(c.getThumbnailUrl());
         dto.setVideoUrl(c.getVideoUrl());
         dto.setAuthorName(c.getAuthorName());
-        dto.setViewCount(c.getViewCount() + 1);
-        dto.setLikeCount(c.getLikeCount());
-        dto.setCommentCount(c.getCommentCount());
-        dto.setReadingTime(c.getReadingTime());
-        dto.setDifficultyLevel(c.getDifficultyLevel().name());
-        dto.setIsFeatured(c.getIsFeatured());
+        dto.setViewCount(c.getViewCount() != null ? c.getViewCount() + 1L : 1L);
+        dto.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L);
+        dto.setCommentCount(c.getCommentCount() != null ? c.getCommentCount() : 0L);
+        dto.setReadingTime(c.getReadingTime() != null ? c.getReadingTime() : 5);
+        dto.setDifficultyLevel(c.getDifficultyLevel() != null ?
+                c.getDifficultyLevel().name() : "BEGINNER");
+        dto.setIsFeatured(c.getIsFeatured() != null ? c.getIsFeatured() : false);
         dto.setTags(c.getTags());
         dto.setCreatedAt(c.getCreatedAt());
         if (userId != null) {
             dto.setIsLiked(likeRepo.existsByContentIdAndUserId(c.getId(), userId));
             dto.setIsBookmarked(bookmarkRepo.existsByContentIdAndUserId(c.getId(), userId));
+        } else {
+            dto.setIsLiked(false);
+            dto.setIsBookmarked(false);
         }
         return dto;
     }

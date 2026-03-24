@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class ContentDTO {
+
     private Long id;
     private String title;
     private String subtitle;
@@ -24,6 +25,7 @@ public class ContentDTO {
     private LocalDateTime createdAt;
     private Boolean isLiked;
     private Boolean isBookmarked;
+    private Boolean isPublished;
     private List<CommentDTO> comments;
 
     // ===== GETTERS =====
@@ -47,6 +49,7 @@ public class ContentDTO {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public Boolean getIsLiked() { return isLiked; }
     public Boolean getIsBookmarked() { return isBookmarked; }
+    public Boolean getIsPublished() { return isPublished; }
     public List<CommentDTO> getComments() { return comments; }
 
     // ===== SETTERS =====
@@ -70,5 +73,6 @@ public class ContentDTO {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setIsLiked(Boolean isLiked) { this.isLiked = isLiked; }
     public void setIsBookmarked(Boolean isBookmarked) { this.isBookmarked = isBookmarked; }
+    public void setIsPublished(Boolean isPublished) { this.isPublished = isPublished; }
     public void setComments(List<CommentDTO> comments) { this.comments = comments; }
 }

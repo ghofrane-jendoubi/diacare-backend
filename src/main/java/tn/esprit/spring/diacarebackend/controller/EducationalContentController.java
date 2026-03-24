@@ -17,17 +17,31 @@ public class EducationalContentController {
 
     private final EducationalContentService contentService;
 
-    // Constructeur manuel
     public EducationalContentController(EducationalContentService contentService) {
         this.contentService = contentService;
     }
 
-    @GetMapping("/contents")
-    public ResponseEntity<Page<ContentSummaryDTO>> getAllContents(
+    // ===== ROUTES SPÉCIFIQUES EN PREMIER =====
+
+    @GetMapping("/contents/featured")
+    public ResponseEntity<List<ContentSummaryDTO>> getFeatured(
+            @RequestParam(required = false) Long userId) {
+        return ResponseEntity.ok(contentService.getFeaturedContents(userId));
+    }
+
+    @GetMapping("/contents/most-viewed")
+    public ResponseEntity<List<ContentSummaryDTO>> getMostViewed(
+            @RequestParam(required = false) Long userId) {
+        return ResponseEntity.ok(contentService.getMostViewed(userId));
+    }
+
+    @GetMapping("/contents/search")
+    public ResponseEntity<Page<ContentSummaryDTO>> search(
+            @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "9") int size,
             @RequestParam(required = false) Long userId) {
-        return ResponseEntity.ok(contentService.getAllContents(page, size, userId));
+        return ResponseEntity.ok(contentService.search(keyword, page, size, userId));
     }
 
     @GetMapping("/contents/category/{category}")
@@ -39,14 +53,23 @@ public class EducationalContentController {
         return ResponseEntity.ok(contentService.getByCategory(category, page, size, userId));
     }
 
-    @GetMapping("/contents/search")
-    public ResponseEntity<Page<ContentSummaryDTO>> search(
-            @RequestParam String keyword,
+    @GetMapping("/my-bookmarks")
+    public ResponseEntity<List<ContentSummaryDTO>> getMyBookmarks(
+            @RequestParam(defaultValue = "1") Long userId) {
+        return ResponseEntity.ok(contentService.getUserBookmarks(userId));
+    }
+
+    // ===== ROUTES GÉNÉRALES =====
+
+    @GetMapping("/contents")
+    public ResponseEntity<Page<ContentSummaryDTO>> getAllContents(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "9") int size,
             @RequestParam(required = false) Long userId) {
-        return ResponseEntity.ok(contentService.search(keyword, page, size, userId));
+        return ResponseEntity.ok(contentService.getAllContents(page, size, userId));
     }
+
+    // ===== ROUTE AVEC {id} EN DERNIER =====
 
     @GetMapping("/contents/{id}")
     public ResponseEntity<ContentDTO> getDetail(
@@ -69,23 +92,5 @@ public class EducationalContentController {
             @RequestParam(defaultValue = "1") Long userId) {
         boolean bookmarked = contentService.toggleBookmark(id, userId);
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
-    }
-
-    @GetMapping("/contents/featured")
-    public ResponseEntity<List<ContentSummaryDTO>> getFeatured(
-            @RequestParam(required = false) Long userId) {
-        return ResponseEntity.ok(contentService.getFeaturedContents(userId));
-    }
-
-    @GetMapping("/contents/most-viewed")
-    public ResponseEntity<List<ContentSummaryDTO>> getMostViewed(
-            @RequestParam(required = false) Long userId) {
-        return ResponseEntity.ok(contentService.getMostViewed(userId));
-    }
-
-    @GetMapping("/my-bookmarks")
-    public ResponseEntity<List<ContentSummaryDTO>> getMyBookmarks(
-            @RequestParam(defaultValue = "1") Long userId) {
-        return ResponseEntity.ok(contentService.getUserBookmarks(userId));
     }
 }
