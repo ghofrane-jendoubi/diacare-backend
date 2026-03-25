@@ -39,6 +39,10 @@ public class FoodEntryService {
 
         return repo.save(entry);
     }
+    public List<FoodEntry> getByPatientId(Long patientId) {
+        // récupérer toutes les entrées pour ce patient
+        return repo.findByPatientId(patientId);
+    }
 
     // ✅ afficher
     public List<FoodEntry> getAll() {

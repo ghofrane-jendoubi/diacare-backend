@@ -1,5 +1,5 @@
 // FoodEntryRequest.java
-package tn.esprit.spring.diacarebackend.controller;
+package tn.esprit.spring.diacarebackend.dto;
 
 public class FoodEntryRequest {
     private String text;
