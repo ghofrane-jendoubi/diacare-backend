@@ -1,9 +1,9 @@
 package tn.esprit.spring.diacarebackend.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import tn.esprit.spring.diacarebackend.entities.User;
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
 public interface UserRepository extends JpaRepository<User, Long> {
-    // Les méthodes findAll(), save(), etc. sont automatiquement disponibles
+    Optional<User> findByEmail(String email);
 }

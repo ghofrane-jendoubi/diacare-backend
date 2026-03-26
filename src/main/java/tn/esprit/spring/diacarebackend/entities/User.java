@@ -10,42 +10,38 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
+    private String nom;
+    private String prenom;
     private String email;
+    private String password;
+    private String role;
 
-    // Constructeur par défaut (obligatoire pour JPA)
-    public User() {}
+    @Column(name = "full_name")
+    private String fullName; // on le laisse, mais on le remplit via un trigger ou on le calcule
 
-    // Constructeur avec paramètres (optionnel)
-    public User(String name, String email) {
-        this.name = name;
-        this.email = email;
-    }
+    // Getters et setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    // ===== GETTERS ET SETTERS =====
-    public Long getId() {
-        return id;
-    }
+    public String getNom() { return nom; }
+    public void setNom(String nom) { this.nom = nom; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getPrenom() { return prenom; }
+    public void setPrenom(String prenom) { this.prenom = prenom; }
 
-    public String getName() {
-        return name;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
-    public String getEmail() {
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public String getFullName() {
+        if (fullName != null) return fullName;
+        if (nom != null && prenom != null) return nom + " " + prenom;
         return email;
     }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 }
