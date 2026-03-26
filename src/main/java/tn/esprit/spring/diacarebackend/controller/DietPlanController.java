@@ -1,6 +1,9 @@
 package tn.esprit.spring.diacarebackend.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.spring.diacarebackend.dto.DietPlanRequest;
 import tn.esprit.spring.diacarebackend.entities.*;
 import tn.esprit.spring.diacarebackend.services.DietPlanService;
 
@@ -8,34 +11,27 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/diet")
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 public class DietPlanController {
 
-    private final DietPlanService service;
+    @Autowired
+    private DietPlanService dietPlanService;
 
-    public DietPlanController(DietPlanService service) {
-        this.service = service;
-    }
-
+    // Créer un plan complet avec ses repas
     @PostMapping("/create")
-    public DietPlan create(@RequestParam String title,
-                           @RequestParam String description,
-                           @RequestParam Long patientId,
-                           @RequestParam Long nutritionistId) {
-
-        return service.createPlan(title, description, patientId, nutritionistId);
+    public ResponseEntity<DietPlan> createPlan(@RequestBody DietPlanRequest request) {
+        return ResponseEntity.ok(dietPlanService.createPlan(request));
     }
 
-    @PostMapping("/add-meal")
-    public DietMeal addMeal(@RequestParam Long planId,
-                            @RequestParam String mealType,
-                            @RequestParam String food) {
-
-        return service.addMeal(planId, mealType, food);
+    // Récupérer les plans d'un patient
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<List<DietPlan>> getByPatient(@PathVariable Long patientId) {
+        return ResponseEntity.ok(dietPlanService.getByPatientId(patientId));
     }
 
-    @GetMapping("/patient/{id}")
-    public List<DietPlan> getByPatient(@PathVariable Long id) {
-        return service.getPlansByPatient(id);
+    // Récupérer tous les plans du nutritionniste
+    @GetMapping("/my-plans")
+    public ResponseEntity<List<DietPlan>> getMyPlans() {
+        return ResponseEntity.ok(dietPlanService.getAllPlans());
     }
 }

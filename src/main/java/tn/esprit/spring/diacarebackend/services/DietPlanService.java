@@ -1,60 +1,68 @@
 package tn.esprit.spring.diacarebackend.services;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import tn.esprit.spring.diacarebackend.entities.*;
-import tn.esprit.spring.diacarebackend.repository.*;
+import tn.esprit.spring.diacarebackend.dto.DietPlanRequest;
+import tn.esprit.spring.diacarebackend.dto.MealRequest;   // ← import manquant !
+import tn.esprit.spring.diacarebackend.entities.DietMeal;
+import tn.esprit.spring.diacarebackend.entities.DietPlan;
+import tn.esprit.spring.diacarebackend.repository.DietPlanRepository;
+import tn.esprit.spring.diacarebackend.repository.UserRepository;
 
 import java.util.List;
 
 @Service
 public class DietPlanService {
 
-    private final DietPlanRepository dietRepo;
-    private final DietMealRepository mealRepo;
-    private final UserRepository userRepository;
+    @Autowired
+    private DietPlanRepository dietPlanRepository;
 
-    public DietPlanService(DietPlanRepository dietRepo,
-                           DietMealRepository mealRepo,
-                           UserRepository userRepository) {
-        this.dietRepo = dietRepo;
-        this.mealRepo = mealRepo;
-        this.userRepository = userRepository;
-    }
+    @Autowired
+    private UserRepository userRepository;
 
-    // ✅ créer plan
-    public DietPlan createPlan(String title, String description,
-                               Long patientId, Long nutritionistId) {
-
-        User patient = userRepository.findById(patientId).orElseThrow();
-        User nutritionist = userRepository.findById(nutritionistId).orElseThrow();
-
+    public DietPlan createPlan(DietPlanRequest req) {
         DietPlan plan = new DietPlan();
-        plan.setTitle(title);
-        plan.setDescription(description);
-        plan.setPatient(patient);
-        plan.setNutritionist(nutritionist);
+        plan.setTitle(req.getTitle());
+        plan.setDescription(req.getDescription());
+        plan.setTargetCalories(req.getTargetCalories());
+        plan.setTargetCarbs(req.getTargetCarbs());
+        plan.setTargetProtein(req.getTargetProtein());
+        plan.setTargetFat(req.getTargetFat());
+        plan.setStatus("active");
 
-        return dietRepo.save(plan);
+        // Patient (id depuis request)
+        if (req.getPatientId() != null) {
+            userRepository.findById(req.getPatientId())
+                    .ifPresent(plan::setPatient);
+        }
+
+        // Nutritionniste (id depuis request)
+        if (req.getNutritionistId() != null) {
+            userRepository.findById(req.getNutritionistId())
+                    .ifPresent(plan::setNutritionist);
+        }
+
+        // Repas associés
+        if (req.getMeals() != null) {
+            for (MealRequest m : req.getMeals()) {
+                DietMeal meal = new DietMeal();
+                meal.setMealType(m.getMealType());
+                meal.setFood(m.getFood());
+                meal.setTargetCarbs(m.getTargetCarbs());
+                meal.setNotes(m.getNotes());
+                meal.setDietPlan(plan);          // ← lien bidirectionnel
+                plan.getMeals().add(meal);
+            }
+        }
+
+        return dietPlanRepository.save(plan);
     }
 
-    // ✅ ajouter repas
-    public DietMeal addMeal(Long planId, String mealType, String food) {
-
-        DietPlan plan = dietRepo.findById(planId).orElseThrow();
-
-        DietMeal meal = new DietMeal();
-        meal.setMealType(mealType);
-        meal.setFood(food);
-        meal.setDietPlan(plan);
-
-        return mealRepo.save(meal);
+    public List<DietPlan> getByPatientId(Long patientId) {
+        return dietPlanRepository.findByPatientId(patientId);
     }
 
-    // ✅ récupérer plans patient
-    public List<DietPlan> getPlansByPatient(Long patientId) {
-        return dietRepo.findAll()
-                .stream()
-                .filter(p -> p.getPatient().getId().equals(patientId))
-                .toList();
+    public List<DietPlan> getAllPlans() {
+        return dietPlanRepository.findAll();
     }
 }
