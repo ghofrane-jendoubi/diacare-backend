@@ -12,11 +12,26 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Patient extends User {
 
+    // ====== INFO PROFIL ======
     private String profilePicture;
 
-    // Constructeur simple
-    public Patient(Long id, String firstName, String lastName, String profilePicture) {
-        super(id, firstName, lastName);
-        this.profilePicture = profilePicture;
-    }
+    // ====== INFO MÉDICALE ======
+    @Enumerated(EnumType.STRING)
+    private DiabetesType diabetesType;
+
+    @Column(nullable = true)
+    private Double weight; // en kg
+
+    @Column(nullable = true)
+    private Double height; // en cm
+
+    @Enumerated(EnumType.STRING)
+    private BloodType bloodType;
+
+    private String emergencyContact; // Nom + téléphone
+
+    @Column(length = 1000)
+    private String familyHistory; // Antécédents familiaux
+
+
 }

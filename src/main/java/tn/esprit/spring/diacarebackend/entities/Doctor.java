@@ -5,13 +5,15 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+
 @Entity
 @Table(name = "doctors")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class Doctor extends User {
-
+    @Id
+    private Long id;
     @Enumerated(EnumType.STRING)
     private Speciality speciality;
 
@@ -25,4 +27,21 @@ public class Doctor extends User {
         this.speciality = speciality;
         this.profilePicture = profilePicture;
     }
+    @Column(unique = true)
+    private String licenseNumber;
+
+    private String hospital;
+
+    private Integer yearsOfExperience;
+
+    private Double consultationFee;
+
+    // Image du certificat stockée sur le serveur
+    @Column(name = "certificate_image")
+    private String certificateImage;
+
+    // Statut du certificat — PENDING par défaut
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CertificateStatus certificateStatus = CertificateStatus.PENDING;
 }

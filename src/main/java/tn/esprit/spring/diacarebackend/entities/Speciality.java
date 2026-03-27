@@ -1,11 +1,14 @@
 package tn.esprit.spring.diacarebackend.entities;
 
 public enum Speciality {
-    ENDOCRINOLOGUE,
-    DIABETOLOGUE,
+
     CARDIOLOGUE,
-    OPHTALMOLOGISTE,
+    DIABETOLOGUE,
+    ENDOCRINOLOGUE,
     NEPHROLOGUE,
+    NEUROLOGUE,
+    OPHTALMOLOGISTE,
+    PEDIATRE,
     PODOLOGUE,
     GENERALISTE
 }
