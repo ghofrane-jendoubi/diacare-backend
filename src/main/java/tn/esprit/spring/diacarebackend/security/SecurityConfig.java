@@ -2,7 +2,6 @@ package tn.esprit.spring.diacarebackend.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.*;
 
-import tn.esprit.spring.diacarebackend.user.service.CustomUserDetailsService;
+import tn.esprit.spring.diacarebackend.services.CustomUserDetailsService;
 
 import java.util.List;
 
