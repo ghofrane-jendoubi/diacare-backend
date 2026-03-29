@@ -3,6 +3,7 @@ package tn.esprit.spring.diacarebackend.entities;
 import jakarta.persistence.*;
 import lombok.Data;
 
+
     @Entity
     @Data
     public class Product {

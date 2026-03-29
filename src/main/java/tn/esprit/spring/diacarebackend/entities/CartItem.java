@@ -1,5 +1,7 @@
 package tn.esprit.spring.diacarebackend.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -18,5 +20,9 @@ public class CartItem {
 
     public void setProduct(Product product) { this.product = product;}
     @ManyToOne
+    @JsonIgnore
+
+    @JsonBackReference
+
     private Cart cart;
 }
