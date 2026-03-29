@@ -28,7 +28,6 @@ public class UploadController {
             System.out.println("Nom fichier: " + file.getOriginalFilename());
             System.out.println("Taille: " + file.getSize());
             System.out.println("Type: " + file.getContentType());
-            System.out.println("Upload dir: " + uploadDir);
 
             if (file.isEmpty()) {
                 return ResponseEntity.status(400).body(Map.of("error", "Fichier vide"));
@@ -101,6 +100,62 @@ public class UploadController {
 
         } catch (IOException e) {
             System.err.println("IOException: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ✅ Ajouter cette méthode pour l'upload de documents
+    @PostMapping("/document")
+    public ResponseEntity<Map<String, String>> uploadDocument(@RequestParam("file") MultipartFile file) {
+        try {
+            System.out.println("=== UPLOAD DOCUMENT ===");
+            System.out.println("Nom fichier: " + file.getOriginalFilename());
+            System.out.println("Taille: " + file.getSize());
+            System.out.println("Type: " + file.getContentType());
+
+            if (file.isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of("error", "Fichier vide"));
+            }
+
+            // Créer le dossier s'il n'existe pas
+            String uploadPath = uploadDir + "/documents/";
+            File directory = new File(uploadPath);
+            if (!directory.exists()) {
+                System.out.println("Création du dossier: " + uploadPath);
+                boolean created = directory.mkdirs();
+                System.out.println("Dossier créé: " + created);
+            }
+
+            // Générer un nom de fichier unique
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+            String filePath = uploadPath + fileName;
+
+            // Sauvegarder le fichier
+            System.out.println("Sauvegarde vers: " + filePath);
+            file.transferTo(new File(filePath));
+
+            // URL accessible depuis le frontend
+            String fileUrl = "/uploads/documents/" + fileName;
+
+            Map<String, String> response = new HashMap<>();
+            response.put("documentUrl", fileUrl);
+            response.put("fileName", fileName);
+
+            System.out.println("Upload document réussi: " + fileUrl);
+            return ResponseEntity.ok(response);
+
+        } catch (IOException e) {
+            System.err.println("IOException: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("Exception: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }

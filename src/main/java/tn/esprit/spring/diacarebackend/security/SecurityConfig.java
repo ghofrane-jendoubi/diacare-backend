@@ -48,6 +48,10 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.disable())
+                )
+
                 .authorizeHttpRequests(auth -> auth
                         // ✅ Tous les endpoints publics
                         .requestMatchers("/api/admins/signup").permitAll()

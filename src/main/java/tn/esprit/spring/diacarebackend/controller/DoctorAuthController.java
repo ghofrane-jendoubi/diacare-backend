@@ -69,7 +69,7 @@ public class DoctorAuthController {
         return ResponseEntity.ok(signupService.getAllDoctors());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/auth/{id}")
     public ResponseEntity<Doctor> getDoctorById(@PathVariable Long id) {
         return ResponseEntity.ok(signupService.getDoctorById(id));
     }

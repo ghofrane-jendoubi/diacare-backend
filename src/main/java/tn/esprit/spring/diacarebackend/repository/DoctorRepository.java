@@ -25,7 +25,8 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     List<Doctor> findBySpeciality(String speciality);
 
     // Récupérer uniquement les infos nécessaires pour l'affichage
-    @Query("SELECT new Doctor(d.id, d.firstName, d.lastName, d.speciality, d.profilePicture) " +
-            "FROM Doctor d WHERE d.verified = true")
+    @Query("SELECT d FROM Doctor d WHERE d.verified = true OR d.certificateStatus = 'APPROVED'")
     List<Doctor> findAllVerifiedDoctorsForDisplay();
+
+
 }

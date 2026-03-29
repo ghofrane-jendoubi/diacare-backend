@@ -4,12 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.spring.diacarebackend.dto.ConversationDTO;
+import tn.esprit.spring.diacarebackend.dto.DoctorConversationDTO;
 import tn.esprit.spring.diacarebackend.entities.Message;
 import tn.esprit.spring.diacarebackend.entities.User;
 import tn.esprit.spring.diacarebackend.repository.MessageRepository;
 import tn.esprit.spring.diacarebackend.repository.PatientRepository;
 import tn.esprit.spring.diacarebackend.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -24,7 +26,7 @@ public class MessageController {
     private UserRepository userRepository;
 
     @Autowired
-    private PatientRepository patientRepository;  // ← Ajouté
+    private PatientRepository patientRepository;
 
     @GetMapping("/conversation")
     public ResponseEntity<List<Message>> getConversation(
@@ -54,6 +56,7 @@ public class MessageController {
         message.setImageUrl(request.getImageUrl());
         message.setAudioUrl(request.getAudioUrl());
         message.setAudioDuration(request.getAudioDuration());
+        message.setDocumentUrl(request.getDocumentUrl());
         message.setSentAt(LocalDateTime.now());
 
         Message saved = messageRepository.save(message);
@@ -69,13 +72,67 @@ public class MessageController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/mark-read-between")
+    public ResponseEntity<Void> markMessagesAsRead(
+            @RequestParam Long doctorId,
+            @RequestParam Long patientId) {
+
+        User doctor = userRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Doctor not found"));
+        User patient = userRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+
+        messageRepository.markMessagesAsReadBetween(doctor, patient);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/conversations/patient/{patientId}")
-    public ResponseEntity<List<ConversationDTO>> getPatientConversations(@PathVariable Long patientId) {
-        // Vérifier que le patient existe
+    public ResponseEntity<List<DoctorConversationDTO>> getPatientConversations(@PathVariable Long patientId) {
         patientRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
-        List<ConversationDTO> conversations = messageRepository.findConversationsByPatient(patientId);
+        List<Object[]> results = messageRepository.findDoctorConversationsByPatientNative(patientId);
+        List<DoctorConversationDTO> conversations = new ArrayList<>();
+
+        for (Object[] row : results) {
+            DoctorConversationDTO dto = new DoctorConversationDTO(
+                    ((Number) row[0]).longValue(),  // doctorId
+                    (String) row[1],                // doctorName
+                    (String) row[2],                // doctorProfilePicture
+                    (String) row[3],                // speciality
+                    (String) row[4],                // lastMessage
+                    row[5] != null ? LocalDateTime.parse(row[5].toString().replace(" ", "T")) : null,
+                    row[6] != null ? ((Number) row[6]).longValue() : null,
+                    row[7] != null ? ((Number) row[7]).longValue() : 0L
+            );
+            conversations.add(dto);
+        }
+
+        return ResponseEntity.ok(conversations);
+    }
+
+    @GetMapping("/conversations/doctor/{doctorId}")
+    public ResponseEntity<List<ConversationDTO>> getDoctorConversations(@PathVariable Long doctorId) {
+        userRepository.findById(doctorId)
+                .orElseThrow(() -> new RuntimeException("Doctor not found"));
+
+        List<Object[]> results = messageRepository.findConversationsByDoctorNative(doctorId);
+        List<ConversationDTO> conversations = new ArrayList<>();
+
+        for (Object[] row : results) {
+            ConversationDTO dto = new ConversationDTO(
+                    ((Number) row[0]).longValue(),
+                    (String) row[1],
+                    (String) row[2],
+                    (String) row[3],
+                    (String) row[4],
+                    row[5] != null ? LocalDateTime.parse((CharSequence) row[5].toString().replace(" ", "T")) : null,
+                    row[6] != null ? ((Number) row[6]).longValue() : null,
+                    row[7] != null ? ((Number) row[7]).longValue() : 0L
+            );
+            conversations.add(dto);
+        }
+
         return ResponseEntity.ok(conversations);
     }
 }
@@ -88,23 +145,21 @@ class MessageRequest {
     private String imageUrl;
     private String audioUrl;
     private Integer audioDuration;
+    private String documentUrl;
 
-    // Getters et setters...
+    // Getters et setters
     public Long getSenderId() { return senderId; }
     public void setSenderId(Long senderId) { this.senderId = senderId; }
-
     public Long getReceiverId() { return receiverId; }
     public void setReceiverId(Long receiverId) { this.receiverId = receiverId; }
-
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
-
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-
     public String getAudioUrl() { return audioUrl; }
     public void setAudioUrl(String audioUrl) { this.audioUrl = audioUrl; }
-
     public Integer getAudioDuration() { return audioDuration; }
     public void setAudioDuration(Integer audioDuration) { this.audioDuration = audioDuration; }
+    public String getDocumentUrl() { return documentUrl; }
+    public void setDocumentUrl(String documentUrl) { this.documentUrl = documentUrl; }
 }

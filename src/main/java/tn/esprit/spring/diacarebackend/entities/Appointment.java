@@ -38,6 +38,11 @@ public class Appointment {
     private String status; // planifié, confirmé, annulé, terminé
 
     private LocalDateTime createdAt;
+    @Column(nullable = false)
+    private Boolean paid = false;
+
+    @Column
+    private Double fee = 0.0;
 
     @PrePersist
     protected void onCreate() {

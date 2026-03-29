@@ -11,10 +11,7 @@ import tn.esprit.spring.diacarebackend.entities.Role;
 import tn.esprit.spring.diacarebackend.repository.UserRepository;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class PatientService {
@@ -32,6 +29,9 @@ public class PatientService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
+    }
+    public Optional<Patient> getPatientById(Long id) {
+        return patientRepository.findById(id);
     }
 
     // =================== SIGNUP ===================

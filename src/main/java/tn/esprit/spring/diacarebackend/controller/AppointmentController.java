@@ -53,23 +53,51 @@ public class AppointmentController {
         appointment.setType(request.getType());
         appointment.setMeetLink(request.getMeetLink());
         appointment.setStatus(request.getStatus());
+        appointment.setPaid(false);
+        appointment.setFee(request.getFee());
 
         Appointment saved = appointmentRepository.save(appointment);
         return ResponseEntity.ok(saved);
     }
+    @GetMapping("/{id}")
+    public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id) {
+        return appointmentRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @RequestBody AppointmentRequest request) {
+    public ResponseEntity<Appointment> updateAppointment(
+            @PathVariable Long id,
+            @RequestBody AppointmentRequest request) {
+
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));
 
-        appointment.setTitle(request.getTitle());
-        appointment.setStartTime(request.getStart());
-        appointment.setEndTime(request.getEnd());
-        appointment.setDescription(request.getDescription());
-        appointment.setType(request.getType());
-        appointment.setMeetLink(request.getMeetLink());
-        appointment.setStatus(request.getStatus());
+        // ✅ Ne modifier que si la valeur est fournie
+        if (request.getTitle() != null)
+            appointment.setTitle(request.getTitle());
+
+        if (request.getStart() != null)
+            appointment.setStartTime(request.getStart());
+
+        if (request.getEnd() != null)
+            appointment.setEndTime(request.getEnd());
+
+        if (request.getDescription() != null)
+            appointment.setDescription(request.getDescription());
+
+        if (request.getType() != null)
+            appointment.setType(request.getType());
+
+        if (request.getMeetLink() != null)
+            appointment.setMeetLink(request.getMeetLink());
+
+        if (request.getStatus() != null)
+            appointment.setStatus(request.getStatus());
+
+        if (request.getFee() != null)
+            appointment.setFee(request.getFee());
 
         Appointment updated = appointmentRepository.save(appointment);
         return ResponseEntity.ok(updated);
@@ -95,6 +123,8 @@ class AppointmentRequest {
     private String type;
     private String meetLink;
     private String status;
+    private Double fee;
+    private Boolean paid;
 
     // Getters et setters
     public Long getDoctorId() { return doctorId; }
@@ -126,4 +156,9 @@ class AppointmentRequest {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Double getFee() { return fee; }
+    public void setFee(Double fee) { this.fee = fee; }
+
+    public Boolean getPaid() { return paid; }
+    public void setPaid(Boolean paid) { this.paid = paid; }
 }

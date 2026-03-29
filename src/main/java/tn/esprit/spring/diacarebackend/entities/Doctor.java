@@ -12,8 +12,6 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class Doctor extends User {
-    @Id
-    private Long id;
     @Enumerated(EnumType.STRING)
     private Speciality speciality;
 
@@ -44,4 +42,5 @@ public class Doctor extends User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CertificateStatus certificateStatus = CertificateStatus.PENDING;
+
 }

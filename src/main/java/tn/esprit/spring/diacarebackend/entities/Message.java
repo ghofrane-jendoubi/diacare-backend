@@ -38,6 +38,7 @@ public class Message {
     private String imageUrl;      // Photo de la langue
     private String audioUrl;      // Message vocal
     private Integer audioDuration; // Durée en secondes
+    private String documentUrl;
 
 
 }
