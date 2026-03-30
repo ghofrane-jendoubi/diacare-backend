@@ -3,8 +3,11 @@ package tn.esprit.spring.diacarebackend.controller;
 import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
 import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
 import tn.esprit.spring.diacarebackend.Service.EducationalContentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +17,7 @@ import java.util.Map;
 @RequestMapping("/api/education")
 @CrossOrigin(origins = "http://localhost:4200")
 public class EducationalContentController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EducationalContentController.class);
 
     private final EducationalContentService contentService;
 
@@ -69,7 +73,7 @@ public class EducationalContentController {
         return ResponseEntity.ok(contentService.getAllContents(page, size, userId));
     }
 
-    // ===== ROUTE AVEC {id} EN DERNIER =====
+    // ===== ROUTES AVEC {id} EN DERNIER =====
 
     @GetMapping("/contents/{id}")
     public ResponseEntity<ContentDTO> getDetail(
@@ -92,5 +96,32 @@ public class EducationalContentController {
             @RequestParam(defaultValue = "1") Long userId) {
         boolean bookmarked = contentService.toggleBookmark(id, userId);
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
+    }
+
+    @PostMapping("/contents/{id}/comments")
+    @Transactional
+    @CrossOrigin(origins = "http://localhost:4200")
+    public ResponseEntity<Map<String, Object>> addComment(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+
+        try {
+            String commentText = (String) body.get("commentText");
+            String userName = (String) body.get("userName");
+            Long parentCommentId = body.get("parentCommentId") != null ?
+                    Long.valueOf(body.get("parentCommentId").toString()) : null;
+
+            if (commentText == null || commentText.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Le commentaire ne peut pas être vide"));
+            }
+
+            // Utiliser un userId par défaut pour les patients non authentifiés
+            Long userId = 1L; // ID patient par défaut
+            Object comment = contentService.addComment(id, commentText, userId, userName, parentCommentId);
+            return ResponseEntity.ok(Map.of("success", true, "comment", comment));
+        } catch (Exception e) {
+            LOGGER.error("Failed to add comment for content id {}", id, e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
 }

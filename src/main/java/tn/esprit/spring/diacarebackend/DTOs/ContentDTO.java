@@ -14,6 +14,7 @@ public class ContentDTO {
     private String contentType;
     private String thumbnailUrl;
     private String videoUrl;
+    private Long authorId;
     private String authorName;
     private Long viewCount;
     private Long likeCount;
@@ -38,6 +39,7 @@ public class ContentDTO {
     public String getContentType() { return contentType; }
     public String getThumbnailUrl() { return thumbnailUrl; }
     public String getVideoUrl() { return videoUrl; }
+    public Long getAuthorId() { return authorId; }
     public String getAuthorName() { return authorName; }
     public Long getViewCount() { return viewCount; }
     public Long getLikeCount() { return likeCount; }
@@ -62,6 +64,7 @@ public class ContentDTO {
     public void setContentType(String contentType) { this.contentType = contentType; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+    public void setAuthorId(Long authorId) { this.authorId = authorId; }
     public void setAuthorName(String authorName) { this.authorName = authorName; }
     public void setViewCount(Long viewCount) { this.viewCount = viewCount; }
     public void setLikeCount(Long likeCount) { this.likeCount = likeCount; }

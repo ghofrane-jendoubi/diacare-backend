@@ -2,14 +2,22 @@ package tn.esprit.spring.diacarebackend.Service;
 
 import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
 import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
-import tn.esprit.spring.diacarebackend.entities.*;
-import tn.esprit.spring.diacarebackend.repository.*;
-import jakarta.transaction.Transactional;
+import tn.esprit.spring.diacarebackend.entities.EducationalContent;
+import tn.esprit.spring.diacarebackend.entities.ContentComment;
+import tn.esprit.spring.diacarebackend.entities.ContentLike;
+import tn.esprit.spring.diacarebackend.entities.ContentBookmark;
+import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
+import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
+import tn.esprit.spring.diacarebackend.repository.ContentLikeRepository;
+import tn.esprit.spring.diacarebackend.repository.ContentBookmarkRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,8 +47,7 @@ public class EducationalContentService {
     }
 
     public Page<ContentSummaryDTO> getByCategory(String category, int page, int size, Long userId) {
-        EducationalContent.Category cat =
-                EducationalContent.Category.valueOf(category.toUpperCase());
+        EducationalContent.Category cat = EducationalContent.Category.valueOf(category.toUpperCase());
         return contentRepo.findByCategoryAndIsPublishedTrue(cat, PageRequest.of(page, size))
                 .map(c -> toSummaryDTO(c, userId));
     }
@@ -110,7 +117,30 @@ public class EducationalContentService {
                 .collect(Collectors.toList());
     }
 
+    // ===== MÉTHODES AJOUTÉES POUR LES COMMENTAIRES =====
+
+    @Transactional
+    public ContentComment addComment(Long contentId, String commentText, Long userId, String userName, Long parentCommentId) {
+        ContentComment comment = new ContentComment();
+        comment.setContentId(contentId);
+        comment.setUserId(userId);
+        comment.setUserName(userName);
+        comment.setCommentText(commentText);
+        comment.setParentCommentId(parentCommentId);
+        comment.setIsApproved(true);
+        comment.setCreatedAt(LocalDateTime.now());
+        comment.setLikeCount(0);
+        ContentComment saved = commentRepo.save(comment);
+        contentRepo.incrementCommentCount(contentId);
+        return saved;
+    }
+
+    public EducationalContent getContentEntity(Long id) {
+        return contentRepo.findById(id).orElse(null);
+    }
+
     // ===== HELPERS =====
+
     private ContentSummaryDTO toSummaryDTO(EducationalContent c, Long userId) {
         ContentSummaryDTO dto = new ContentSummaryDTO();
         dto.setId(c.getId());
@@ -119,13 +149,13 @@ public class EducationalContentService {
         dto.setCategory(c.getCategory() != null ? c.getCategory().name() : "");
         dto.setContentType(c.getContentType() != null ? c.getContentType().name() : "ARTICLE");
         dto.setThumbnailUrl(c.getThumbnailUrl());
+        dto.setAuthorId(c.getAuthorId());
         dto.setAuthorName(c.getAuthorName());
         dto.setViewCount(c.getViewCount() != null ? c.getViewCount() : 0L);
         dto.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L);
         dto.setCommentCount(c.getCommentCount() != null ? c.getCommentCount() : 0L);
         dto.setReadingTime(c.getReadingTime() != null ? c.getReadingTime() : 5);
-        dto.setDifficultyLevel(c.getDifficultyLevel() != null ?
-                c.getDifficultyLevel().name() : "BEGINNER");
+        dto.setDifficultyLevel(c.getDifficultyLevel() != null ? c.getDifficultyLevel().name() : "BEGINNER");
         dto.setIsFeatured(c.getIsFeatured() != null ? c.getIsFeatured() : false);
         dto.setTags(c.getTags());
         dto.setCreatedAt(c.getCreatedAt());
@@ -151,13 +181,13 @@ public class EducationalContentService {
         dto.setContentType(c.getContentType() != null ? c.getContentType().name() : "ARTICLE");
         dto.setThumbnailUrl(c.getThumbnailUrl());
         dto.setVideoUrl(c.getVideoUrl());
+        dto.setAuthorId(c.getAuthorId());
         dto.setAuthorName(c.getAuthorName());
         dto.setViewCount(c.getViewCount() != null ? c.getViewCount() + 1L : 1L);
         dto.setLikeCount(c.getLikeCount() != null ? c.getLikeCount() : 0L);
         dto.setCommentCount(c.getCommentCount() != null ? c.getCommentCount() : 0L);
         dto.setReadingTime(c.getReadingTime() != null ? c.getReadingTime() : 5);
-        dto.setDifficultyLevel(c.getDifficultyLevel() != null ?
-                c.getDifficultyLevel().name() : "BEGINNER");
+        dto.setDifficultyLevel(c.getDifficultyLevel() != null ? c.getDifficultyLevel().name() : "BEGINNER");
         dto.setIsFeatured(c.getIsFeatured() != null ? c.getIsFeatured() : false);
         dto.setTags(c.getTags());
         dto.setCreatedAt(c.getCreatedAt());

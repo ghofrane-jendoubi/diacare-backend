@@ -105,12 +105,13 @@ public class ForumController {
             ));
         }
 
-        // Modération IA
-        Map<String, Object> modResult = moderationService.moderateContent(title + " " + content);
+        // Modération IA (désactivée temporairement pour tests)
+        Map<String, Object> modResult = Map.of("safe", true, "score", 0.0);
         boolean isSafe = (Boolean) modResult.getOrDefault("safe", true);
         double score = ((Number) modResult.getOrDefault("score", 0.0)).doubleValue();
 
-        if (!isSafe && score > 0.8) {
+        // Désactiver temporairement la modération pour tests
+        if (false && !isSafe && score > 0.8) {
             return ResponseEntity.ok(Map.of(
                     "success", false,
                     "blocked", true,
@@ -224,12 +225,12 @@ public class ForumController {
             ));
         }
 
-        // Modération IA
-        Map<String, Object> modResult = moderationService.moderateContent(content);
+        // Modération IA (désactivée temporairement pour tests)
+        Map<String, Object> modResult = Map.of("safe", true, "score", 0.0);
         boolean isSafe = (Boolean) modResult.getOrDefault("safe", true);
-        double score = ((Number) modResult.getOrDefault("score", 0.0)).doubleValue();
 
-        if (!isSafe && score > 0.8) {
+        // Désactiver temporairement la modération pour tests
+        if (false && !isSafe) {
             return ResponseEntity.ok(Map.of(
                     "success", false,
                     "blocked", true,

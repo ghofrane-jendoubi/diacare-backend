@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface PrivateMessageRepository extends JpaRepository<PrivateMessage, Long> {
     List<PrivateMessage> findByReceiverIdOrderByCreatedAtDesc(Long receiverId);
+    List<PrivateMessage> findBySenderIdOrderByCreatedAtDesc(Long senderId);
     List<PrivateMessage> findBySenderIdOrReceiverIdOrderByCreatedAtDesc(Long senderId, Long receiverId);
     long countByReceiverIdAndIsReadFalse(Long receiverId);
 }

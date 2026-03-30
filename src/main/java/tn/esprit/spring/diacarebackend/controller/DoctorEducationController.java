@@ -2,10 +2,13 @@ package tn.esprit.spring.diacarebackend.controller;
 
 import tn.esprit.spring.diacarebackend.DTOs.*;
 import tn.esprit.spring.diacarebackend.entities.*;
-import tn.esprit.spring.diacarebackend.repository.*;
+import tn.esprit.spring.diacarebackend.Service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
+import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
+import tn.esprit.spring.diacarebackend.repository.PrivateMessageRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -19,14 +22,17 @@ public class DoctorEducationController {
     private final EducationalContentRepository contentRepo;
     private final ContentCommentRepository commentRepo;
     private final PrivateMessageRepository messageRepo;
+    private final NotificationService notificationService;
 
     public DoctorEducationController(
             EducationalContentRepository contentRepo,
             ContentCommentRepository commentRepo,
-            PrivateMessageRepository messageRepo) {
+            PrivateMessageRepository messageRepo,
+            NotificationService notificationService) {
         this.contentRepo = contentRepo;
         this.commentRepo = commentRepo;
         this.messageRepo = messageRepo;
+        this.notificationService = notificationService;
     }
 
     // ===== ARTICLES =====
@@ -195,6 +201,17 @@ public class DoctorEducationController {
     public ResponseEntity<PrivateMessageDTO> sendMessage(
             @RequestBody Map<String, Object> body) {
 
+        // Validate required fields
+        if (body.get("senderId") == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (body.get("receiverId") == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (body.get("message") == null || body.get("message").toString().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
         PrivateMessage msg = new PrivateMessage();
         msg.setSenderId(Long.valueOf(body.get("senderId").toString()));
         msg.setReceiverId(Long.valueOf(body.get("receiverId").toString()));
@@ -217,18 +234,80 @@ public class DoctorEducationController {
         );
     }
 
-    // Marquer message comme lu
+    // Récupérer les messages envoyés par un utilisateur (patient)
+    @GetMapping("/messages/sent/{userId}")
+    public ResponseEntity<List<PrivateMessageDTO>> getSentMessages(@PathVariable Long userId) {
+        return ResponseEntity.ok(
+                messageRepo.findBySenderIdOrderByCreatedAtDesc(userId)
+                        .stream().map(this::toMessageDTO).collect(Collectors.toList())
+        );
+    }
+
+    // Récupérer tous les messages d'un utilisateur (envoyés + reçus)
+    @GetMapping("/messages/all/{userId}")
+    public ResponseEntity<Map<String, Object>> getAllMessages(@PathVariable Long userId) {
+        List<PrivateMessageDTO> sent = messageRepo.findBySenderIdOrderByCreatedAtDesc(userId)
+                .stream().map(this::toMessageDTO).collect(Collectors.toList());
+
+        List<PrivateMessageDTO> received = messageRepo.findByReceiverIdOrderByCreatedAtDesc(userId)
+                .stream().map(this::toMessageDTO).collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of(
+                "sent", sent,
+                "received", received
+        ));
+    } // Added closing bracket here
+
     @PatchMapping("/messages/{messageId}/read")
     @Transactional
-    public ResponseEntity<Void> markAsRead(@PathVariable Long messageId) {
+    @CrossOrigin(origins = "http://localhost:4200")
+    public ResponseEntity<Void> markMessageAsRead(@PathVariable Long messageId) {
         messageRepo.findById(messageId).ifPresent(msg -> {
             msg.setIsRead(true);
             messageRepo.save(msg);
         });
+        return ResponseEntity.ok().build(); // Added return statement here
+    }
+
+    // Supprimer un message (pour les médecins et patients)
+    @DeleteMapping("/messages/{messageId}")
+    @Transactional
+    @CrossOrigin(origins = "http://localhost:4200")
+    public ResponseEntity<Void> deleteMessage(@PathVariable Long messageId) {
+        messageRepo.findById(messageId).ifPresent(msg -> {
+            messageRepo.delete(msg);
+        });
         return ResponseEntity.ok().build();
     }
 
-    // ===== HELPERS =====
+    // ===== NOTIFICATIONS =====
+
+    @GetMapping("/notifications/doctor/{doctorId}")
+    public ResponseEntity<List<Notification>> getNotifications(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(notificationService.getNotificationsForDoctor(doctorId));
+    }
+
+    @GetMapping("/notifications/doctor/{doctorId}/unread")
+    public ResponseEntity<List<Notification>> getUnreadNotifications(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(notificationService.getUnreadNotificationsForDoctor(doctorId));
+    }
+
+    @GetMapping("/notifications/doctor/{doctorId}/unread-count")
+    public ResponseEntity<Long> getUnreadCount(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(notificationService.getUnreadCountForDoctor(doctorId));
+    }
+
+    @PatchMapping("/notifications/{notificationId}/read")
+    public ResponseEntity<Void> markAsRead(@PathVariable Long notificationId) {
+        notificationService.markAsRead(notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/notifications/doctor/{doctorId}/read-all")
+    public ResponseEntity<Void> markAllAsRead(@PathVariable Long doctorId) {
+        notificationService.markAllAsReadForDoctor(doctorId);
+        return ResponseEntity.ok().build();
+    }
 
     private ContentSummaryDTO toSummaryDTO(EducationalContent c) {
         ContentSummaryDTO dto = new ContentSummaryDTO();
@@ -277,5 +356,4 @@ public class DoctorEducationController {
         dto.setIsRead(m.getIsRead());
         dto.setCreatedAt(m.getCreatedAt());
         return dto;
-    }
-}
+    }}
