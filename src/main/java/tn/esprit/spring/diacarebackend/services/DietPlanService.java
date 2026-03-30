@@ -59,7 +59,7 @@ public class DietPlanService {
     }
 
     public List<DietPlan> getByPatientId(Long patientId) {
-        return dietPlanRepository.findByPatientId(patientId);
+        return dietPlanRepository.findByPatient_Id(patientId);
     }
 
     public List<DietPlan> getAllPlans() {

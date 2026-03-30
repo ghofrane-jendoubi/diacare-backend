@@ -48,4 +48,11 @@ public class FoodEntryService {
     public List<FoodEntry> getAll() {
         return repo.findAll();
     }
+    public void deleteById(Long id) {
+        if (!repo.existsById(id)) {
+            throw new RuntimeException("FoodEntry not found with id " + id);
+        }
+        repo.deleteById(id);
+    }
+
 }

@@ -1,5 +1,6 @@
 package tn.esprit.spring.diacarebackend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -16,6 +17,7 @@ public class DietMeal {
     private String notes;        // conseils du nutritionniste
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "diet_plan_id")
     private DietPlan dietPlan;
 

@@ -46,5 +46,9 @@ public class FoodEntryController {
         String text = "I ate " + String.join(" and ", foods);
         return service.addEntry(text, Long.parseLong(body.get("patientId")));
     }
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        service.deleteById(id);
+    }
 
 }

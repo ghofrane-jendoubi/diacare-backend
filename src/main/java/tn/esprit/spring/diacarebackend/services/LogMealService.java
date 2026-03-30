@@ -17,7 +17,7 @@ import java.util.Map;
 @Service
 public class LogMealService {
 
-    @Value("${logmeal.token}")
+    @Value("${spoonacular.token}")
     private String token;
 
     private final RestTemplate restTemplate = new RestTemplate();

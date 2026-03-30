@@ -1,5 +1,6 @@
 package tn.esprit.spring.diacarebackend.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;   // ← java.util.List PAS org.hibernate.mapping.List !
@@ -23,11 +24,14 @@ public class DietPlan {
     private Integer targetProtein;
     private Integer targetFat;
 
+
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "patient_id")
     private User patient;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "nutritionist_id")
     private User nutritionist;
 
