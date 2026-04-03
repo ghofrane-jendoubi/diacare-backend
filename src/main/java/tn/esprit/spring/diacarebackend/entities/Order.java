@@ -21,7 +21,9 @@ public class Order {
     private double totalPrice;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20) // should match DB column length
     private OrderStatus status;
+
 
     private LocalDateTime createdAt;
 

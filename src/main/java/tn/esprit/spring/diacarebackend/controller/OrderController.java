@@ -1,6 +1,7 @@
 package tn.esprit.spring.diacarebackend.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.spring.diacarebackend.entities.Order;
 import tn.esprit.spring.diacarebackend.entities.OrderStatus;
@@ -57,5 +58,33 @@ public class OrderController {
         orderRepository.save(order);
 
         return "Confirmation OK ✔";
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+        orderService.deleteOrder(id);
+        return ResponseEntity.noContent().build();  // 204 No Content
+    }
+
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<Order> markOrderAsPaid(@PathVariable Long id,
+                                                 @RequestParam(required = false) String email) {
+        Order order = orderService.markAsPaid(id, email);
+        return ResponseEntity.ok(order);
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+        Order order = orderService.getOrderById(id);
+        return ResponseEntity.ok(order);
+    }
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<Order> confirmOrder(@PathVariable Long id) {
+        Order order = orderService.confirmOrder(id);
+        return ResponseEntity.ok(order);
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Order> cancelOrder(@PathVariable Long id) {
+        Order order = orderService.cancelOrder(id);
+        return ResponseEntity.ok(order);
     }
 }

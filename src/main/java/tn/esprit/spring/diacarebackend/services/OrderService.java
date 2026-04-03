@@ -9,4 +9,10 @@ public interface OrderService {
     Order confirmPayment(Long orderId);
     Order createOrder(String token);
     List<Order> getAllOrders();
+    void deleteOrder(Long id);
+
+    Order markAsPaid(Long id, String email);
+    Order getOrderById(Long id);
+    Order confirmOrder(Long id);
+    Order cancelOrder(Long id);
 }
