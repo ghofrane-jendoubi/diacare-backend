@@ -40,7 +40,7 @@ public class ForumModerationService {
                 Réponds UNIQUEMENT avec le JSON.
                 """.formatted(content);
 
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + geminiKey;
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=" + geminiKey;
 
             Map<String, Object> request = new HashMap<>();
             List<Map<String, Object>> contents = new ArrayList<>();

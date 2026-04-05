@@ -278,7 +278,7 @@ public class IaDashboardService {
         if ("demo".equals(geminiKey)) return "{}";
         try {
             String url = "https://generativelanguage.googleapis.com/v1beta/" +
-                    "models/gemini-pro:generateContent?key=" + geminiKey;
+                    "models/gemini-1.5-pro-latest:generateContent?key=" + geminiKey;
 
             Map<String, Object> request = new HashMap<>();
             request.put("contents", List.of(Map.of(

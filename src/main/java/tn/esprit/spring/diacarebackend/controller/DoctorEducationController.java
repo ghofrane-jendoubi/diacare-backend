@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
 import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
-import tn.esprit.spring.diacarebackend.repository.PrivateMessageRepository;
+
 
 import java.util.List;
 import java.util.Map;
@@ -21,17 +21,17 @@ public class DoctorEducationController {
 
     private final EducationalContentRepository contentRepo;
     private final ContentCommentRepository commentRepo;
-    private final PrivateMessageRepository messageRepo;
+
     private final NotificationService notificationService;
 
     public DoctorEducationController(
             EducationalContentRepository contentRepo,
             ContentCommentRepository commentRepo,
-            PrivateMessageRepository messageRepo,
+
             NotificationService notificationService) {
         this.contentRepo = contentRepo;
         this.commentRepo = commentRepo;
-        this.messageRepo = messageRepo;
+
         this.notificationService = notificationService;
     }
 
@@ -130,14 +130,14 @@ public class DoctorEducationController {
         long totalLikes = contents.stream().mapToLong(c -> c.getLikeCount() != null ? c.getLikeCount() : 0).sum();
         long totalComments = contents.stream().mapToLong(c -> c.getCommentCount() != null ? c.getCommentCount() : 0).sum();
         long totalArticles = contents.size();
-        long unreadMessages = messageRepo.countByReceiverIdAndIsReadFalse(doctorId);
+
 
         return ResponseEntity.ok(Map.of(
                 "totalArticles", totalArticles,
                 "totalViews", totalViews,
                 "totalLikes", totalLikes,
-                "totalComments", totalComments,
-                "unreadMessages", unreadMessages
+                "totalComments", totalComments
+
         ));
     }
 
@@ -195,90 +195,6 @@ public class DoctorEducationController {
 
     // ===== MESSAGES PRIVÉS =====
 
-    // Envoyer un message privé
-    @PostMapping("/messages/send")
-    @Transactional
-    public ResponseEntity<PrivateMessageDTO> sendMessage(
-            @RequestBody Map<String, Object> body) {
-
-        // Validate required fields
-        if (body.get("senderId") == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (body.get("receiverId") == null) {
-            return ResponseEntity.badRequest().build();
-        }
-        if (body.get("message") == null || body.get("message").toString().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        PrivateMessage msg = new PrivateMessage();
-        msg.setSenderId(Long.valueOf(body.get("senderId").toString()));
-        msg.setReceiverId(Long.valueOf(body.get("receiverId").toString()));
-        msg.setSenderName((String) body.get("senderName"));
-        msg.setReceiverName((String) body.get("receiverName"));
-        msg.setMessage((String) body.get("message"));
-        if (body.get("contentId") != null) msg.setContentId(Long.valueOf(body.get("contentId").toString()));
-        if (body.get("commentId") != null) msg.setCommentId(Long.valueOf(body.get("commentId").toString()));
-
-        PrivateMessage saved = messageRepo.save(msg);
-        return ResponseEntity.ok(toMessageDTO(saved));
-    }
-
-    // Récupérer les messages reçus
-    @GetMapping("/messages/received/{userId}")
-    public ResponseEntity<List<PrivateMessageDTO>> getReceivedMessages(@PathVariable Long userId) {
-        return ResponseEntity.ok(
-                messageRepo.findByReceiverIdOrderByCreatedAtDesc(userId)
-                        .stream().map(this::toMessageDTO).collect(Collectors.toList())
-        );
-    }
-
-    // Récupérer les messages envoyés par un utilisateur (patient)
-    @GetMapping("/messages/sent/{userId}")
-    public ResponseEntity<List<PrivateMessageDTO>> getSentMessages(@PathVariable Long userId) {
-        return ResponseEntity.ok(
-                messageRepo.findBySenderIdOrderByCreatedAtDesc(userId)
-                        .stream().map(this::toMessageDTO).collect(Collectors.toList())
-        );
-    }
-
-    // Récupérer tous les messages d'un utilisateur (envoyés + reçus)
-    @GetMapping("/messages/all/{userId}")
-    public ResponseEntity<Map<String, Object>> getAllMessages(@PathVariable Long userId) {
-        List<PrivateMessageDTO> sent = messageRepo.findBySenderIdOrderByCreatedAtDesc(userId)
-                .stream().map(this::toMessageDTO).collect(Collectors.toList());
-
-        List<PrivateMessageDTO> received = messageRepo.findByReceiverIdOrderByCreatedAtDesc(userId)
-                .stream().map(this::toMessageDTO).collect(Collectors.toList());
-
-        return ResponseEntity.ok(Map.of(
-                "sent", sent,
-                "received", received
-        ));
-    } // Added closing bracket here
-
-    @PatchMapping("/messages/{messageId}/read")
-    @Transactional
-    @CrossOrigin(origins = "http://localhost:4200")
-    public ResponseEntity<Void> markMessageAsRead(@PathVariable Long messageId) {
-        messageRepo.findById(messageId).ifPresent(msg -> {
-            msg.setIsRead(true);
-            messageRepo.save(msg);
-        });
-        return ResponseEntity.ok().build(); // Added return statement here
-    }
-
-    // Supprimer un message (pour les médecins et patients)
-    @DeleteMapping("/messages/{messageId}")
-    @Transactional
-    @CrossOrigin(origins = "http://localhost:4200")
-    public ResponseEntity<Void> deleteMessage(@PathVariable Long messageId) {
-        messageRepo.findById(messageId).ifPresent(msg -> {
-            messageRepo.delete(msg);
-        });
-        return ResponseEntity.ok().build();
-    }
 
     // ===== NOTIFICATIONS =====
 
@@ -343,17 +259,5 @@ public class DoctorEducationController {
         return dto;
     }
 
-    private PrivateMessageDTO toMessageDTO(PrivateMessage m) {
-        PrivateMessageDTO dto = new PrivateMessageDTO();
-        dto.setId(m.getId());
-        dto.setSenderId(m.getSenderId());
-        dto.setReceiverId(m.getReceiverId());
-        dto.setSenderName(m.getSenderName());
-        dto.setReceiverName(m.getReceiverName());
-        dto.setContentId(m.getContentId());
-        dto.setCommentId(m.getCommentId());
-        dto.setMessage(m.getMessage());
-        dto.setIsRead(m.getIsRead());
-        dto.setCreatedAt(m.getCreatedAt());
-        return dto;
-    }}
+
+    }

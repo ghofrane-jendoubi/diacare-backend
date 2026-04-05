@@ -25,7 +25,7 @@ public class ModerationService {
     }
 
     private String callGemini(String prompt) {
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + geminiKey;
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=" + geminiKey;
         Map<String, Object> request = new HashMap<>();
         request.put("contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))));
         request.put("generationConfig", Map.of("temperature", 0.2, "maxOutputTokens", 50));
