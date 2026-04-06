@@ -149,11 +149,11 @@ public class DoctorEducationController {
         List<EducationalContent> contents = contentRepo.findByAuthorIdOrderByCreatedAtDesc(doctorId);
         List<CommentDTO> allComments = contents.stream()
                 .flatMap(c -> commentRepo
-                        .findByContentIdAndParentCommentIdIsNullAndIsApprovedTrueOrderByCreatedAtDesc(c.getId())
+                        .findByContentIdAndParentCommentIdIsNullOrderByCreatedAtDesc(c.getId())
                         .stream().map(comment -> {
                             CommentDTO dto = toCommentDTO(comment);
                             dto.setReplies(
-                                    commentRepo.findByParentCommentIdAndIsApprovedTrue(comment.getId())
+                                    commentRepo.findByParentCommentIdOrderByCreatedAtAsc(comment.getId())
                                             .stream().map(this::toCommentDTO).collect(Collectors.toList())
                             );
                             return dto;

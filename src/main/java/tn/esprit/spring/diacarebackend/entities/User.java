@@ -19,6 +19,9 @@ public class User {
     @Column(name = "full_name")
     private String fullName; // on le laisse, mais on le remplit via un trigger ou on le calcule
 
+    @Column(name = "doctor_id")
+    private Long doctorId;
+
     // Getters et setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -44,4 +47,6 @@ public class User {
         return email;
     }
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public Long getDoctorId() { return doctorId; }
+    public void setDoctorId(Long doctorId) { this.doctorId = doctorId; }
 }

@@ -2,10 +2,12 @@ package tn.esprit.spring.diacarebackend.Service;
 
 import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
 import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
+import tn.esprit.spring.diacarebackend.entities.AppUser;
 import tn.esprit.spring.diacarebackend.entities.EducationalContent;
 import tn.esprit.spring.diacarebackend.entities.ContentComment;
 import tn.esprit.spring.diacarebackend.entities.ContentLike;
 import tn.esprit.spring.diacarebackend.entities.ContentBookmark;
+import tn.esprit.spring.diacarebackend.repository.AppUserRepository;
 import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
 import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
 import tn.esprit.spring.diacarebackend.repository.ContentLikeRepository;
@@ -18,7 +20,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,16 +39,19 @@ public class EducationalContentService {
     private final ContentLikeRepository likeRepo;
     private final ContentCommentRepository commentRepo;
     private final ContentBookmarkRepository bookmarkRepo;
+    private final AppUserRepository appUserRepo;
 
     public EducationalContentService(
             EducationalContentRepository contentRepo,
             ContentLikeRepository likeRepo,
             ContentCommentRepository commentRepo,
-            ContentBookmarkRepository bookmarkRepo) {
+            ContentBookmarkRepository bookmarkRepo,
+            AppUserRepository appUserRepo) {
         this.contentRepo = contentRepo;
         this.likeRepo = likeRepo;
         this.commentRepo = commentRepo;
         this.bookmarkRepo = bookmarkRepo;
+        this.appUserRepo = appUserRepo;
     }
 
     public Page<ContentSummaryDTO> getAllContents(int page, int size, Long userId) {
@@ -109,6 +123,43 @@ public class EducationalContentService {
                 .collect(Collectors.toList());
     }
 
+    public List<ContentSummaryDTO> getRecommendations(Long userId, String diabetesType) {
+        List<EducationalContent> publishedContents = contentRepo.findByIsPublishedTrue();
+        if (publishedContents.isEmpty()) {
+            return List.of();
+        }
+
+        String resolvedDiabetesType = resolveDiabetesType(userId, diabetesType);
+        Set<Long> seenContentIds = getSeenContentIds(userId);
+        Set<String> interestTokens = buildInterestTokens(userId, resolvedDiabetesType);
+        Map<Long, Long> sameTypeLikeCounts = getSameTypeLikeCounts(resolvedDiabetesType);
+
+        List<RecommendationCandidate> candidates = new ArrayList<>();
+        for (EducationalContent content : publishedContents) {
+            if (content == null || content.getId() == null || seenContentIds.contains(content.getId())) {
+                continue;
+            }
+
+            double score = scoreContent(content, interestTokens, sameTypeLikeCounts, resolvedDiabetesType);
+            candidates.add(new RecommendationCandidate(content, score));
+        }
+
+        if (candidates.isEmpty()) {
+            return fallbackRecommendations(publishedContents, seenContentIds, userId);
+        }
+
+        candidates.sort(
+                Comparator.comparingDouble(RecommendationCandidate::score).reversed()
+                        .thenComparing(c -> safeLocalDateTime(c.content().getCreatedAt()), Comparator.reverseOrder())
+                        .thenComparing(c -> c.content().getLikeCount() != null ? c.content().getLikeCount() : 0L, Comparator.reverseOrder())
+        );
+
+        return candidates.stream()
+                .limit(6)
+                .map(c -> toSummaryDTO(c.content(), userId))
+                .collect(Collectors.toList());
+    }
+
     public List<ContentSummaryDTO> getUserBookmarks(Long userId) {
         return bookmarkRepo.findByUserId(userId).stream()
                 .map(b -> contentRepo.findById(b.getContentId()).orElse(null))
@@ -169,6 +220,230 @@ public class EducationalContentService {
         }
         return dto;
     }
+
+    private String resolveDiabetesType(Long userId, String diabetesType) {
+        if (diabetesType != null && !diabetesType.isBlank()) {
+            return normalizeText(diabetesType);
+        }
+        if (userId == null) {
+            return "";
+        }
+        return appUserRepo.findById(userId)
+                .map(AppUser::getDiabetesType)
+                .map(this::normalizeText)
+                .orElse("");
+    }
+
+    private Set<Long> getSeenContentIds(Long userId) {
+        if (userId == null) {
+            return Set.of();
+        }
+
+        Set<Long> seen = new HashSet<>();
+        seen.addAll(likeRepo.findByUserId(userId).stream()
+                .map(ContentLike::getContentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        seen.addAll(bookmarkRepo.findByUserId(userId).stream()
+                .map(ContentBookmark::getContentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        return seen;
+    }
+
+    private Set<String> buildInterestTokens(Long userId, String diabetesType) {
+        Set<String> tokens = new LinkedHashSet<>(diabetesTypeTokens(diabetesType));
+        if (userId == null) {
+            return tokens;
+        }
+
+        Set<Long> historyContentIds = new LinkedHashSet<>();
+        historyContentIds.addAll(likeRepo.findByUserId(userId).stream()
+                .map(ContentLike::getContentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+        historyContentIds.addAll(bookmarkRepo.findByUserId(userId).stream()
+                .map(ContentBookmark::getContentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+
+        for (Long contentId : historyContentIds) {
+            contentRepo.findById(contentId).ifPresent(content -> {
+                tokens.addAll(extractContentTokens(content));
+            });
+        }
+
+        return tokens;
+    }
+
+    private Map<Long, Long> getSameTypeLikeCounts(String diabetesType) {
+        if (diabetesType == null || diabetesType.isBlank()) {
+            return Map.of();
+        }
+
+        List<AppUser> sameTypeUsers = appUserRepo.findByDiabetesTypeIgnoreCase(diabetesType);
+        if (sameTypeUsers.isEmpty()) {
+            return Map.of();
+        }
+
+        Set<Long> sameTypeUserIds = sameTypeUsers.stream()
+                .map(AppUser::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (sameTypeUserIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return likeRepo.findByUserIdIn(sameTypeUserIds).stream()
+                .filter(like -> like.getContentId() != null)
+                .collect(Collectors.groupingBy(ContentLike::getContentId, Collectors.counting()));
+    }
+
+    private double scoreContent(EducationalContent content,
+                                Set<String> interestTokens,
+                                Map<Long, Long> sameTypeLikeCounts,
+                                String diabetesType) {
+        Set<String> contentTokens = extractContentTokens(content);
+        double score = 0.0;
+
+        long overlap = contentTokens.stream().filter(interestTokens::contains).count();
+        score += overlap * 4.0;
+
+        Long sameTypeLikes = sameTypeLikeCounts.get(content.getId());
+        if (sameTypeLikes != null) {
+            score += Math.min(sameTypeLikes, 10L) * 1.5;
+        }
+
+        Long likeCount = content.getLikeCount() != null ? content.getLikeCount() : 0L;
+        Long viewCount = content.getViewCount() != null ? content.getViewCount() : 0L;
+        Long commentCount = content.getCommentCount() != null ? content.getCommentCount() : 0L;
+        score += Math.min(likeCount, 50L) * 0.15;
+        score += Math.min(viewCount, 200L) * 0.03;
+        score += Math.min(commentCount, 25L) * 0.08;
+
+        if (Boolean.TRUE.equals(content.getIsFeatured())) {
+            score += 1.0;
+        }
+
+        if (matchesDiabetesType(content, diabetesType)) {
+            score += 2.5;
+        }
+
+        score += freshnessBonus(content.getCreatedAt());
+        return score;
+    }
+
+    private List<ContentSummaryDTO> fallbackRecommendations(List<EducationalContent> contents,
+                                                            Set<Long> seenContentIds,
+                                                            Long userId) {
+        return contents.stream()
+                .filter(content -> content != null && content.getId() != null && !seenContentIds.contains(content.getId()))
+                .sorted(Comparator.comparing((EducationalContent c) -> c.getLikeCount() != null ? c.getLikeCount() : 0L, Comparator.reverseOrder())
+                        .thenComparing(c -> c.getViewCount() != null ? c.getViewCount() : 0L, Comparator.reverseOrder())
+                        .thenComparing(c -> safeLocalDateTime(c.getCreatedAt()), Comparator.reverseOrder()))
+                .limit(6)
+                .map(c -> toSummaryDTO(c, userId))
+                .collect(Collectors.toList());
+    }
+
+    private Set<String> extractContentTokens(EducationalContent content) {
+        Set<String> tokens = new HashSet<>();
+        if (content.getTags() != null && !content.getTags().isBlank()) {
+            tokens.addAll(splitTokens(content.getTags()));
+        }
+        if (content.getCategory() != null) {
+            tokens.addAll(categoryTokens(content.getCategory().name()));
+        }
+        if (content.getTitle() != null) {
+            tokens.addAll(splitTokens(content.getTitle()));
+        }
+        return tokens;
+    }
+
+    private Set<String> categoryTokens(String category) {
+        String normalized = normalizeText(category);
+        Set<String> tokens = new HashSet<>();
+        switch (normalized) {
+            case "nutrition" -> tokens.addAll(Set.of("nutrition", "alimentation", "repas", "glycemie"));
+            case "exercise" -> tokens.addAll(Set.of("sport", "exercice", "activite", "physique"));
+            case "medication" -> tokens.addAll(Set.of("medicament", "traitement", "insuline", "dose"));
+            case "monitoring" -> tokens.addAll(Set.of("surveillance", "glycemie", "capteur", "controle"));
+            case "lifestyle" -> tokens.addAll(Set.of("mode", "vie", "habitudes", "sommeil", "stress"));
+            case "mental_health" -> tokens.addAll(Set.of("stress", "moral", "soutien", "motivation"));
+            default -> {
+            }
+        }
+        return tokens;
+    }
+
+    private Set<String> diabetesTypeTokens(String diabetesType) {
+        Set<String> tokens = new LinkedHashSet<>();
+        String normalized = normalizeText(diabetesType);
+        if (normalized.contains("type1") || normalized.contains("type 1")) {
+            tokens.addAll(Set.of("insuline", "glycemie", "hypoglycemie", "pompe", "surveillance"));
+        } else if (normalized.contains("type2") || normalized.contains("type 2")) {
+            tokens.addAll(Set.of("alimentation", "sport", "exercice", "poids", "insuline", "glycemie"));
+        } else if (normalized.contains("gestationnel")) {
+            tokens.addAll(Set.of("grossesse", "alimentation", "surveillance", "glycemie", "suivi"));
+        }
+        return tokens;
+    }
+
+    private boolean matchesDiabetesType(EducationalContent content, String diabetesType) {
+        if (diabetesType == null || diabetesType.isBlank()) {
+            return false;
+        }
+        Set<String> contentTokens = extractContentTokens(content);
+        Set<String> profileTokens = diabetesTypeTokens(diabetesType);
+        for (String token : profileTokens) {
+            if (contentTokens.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Set<String> splitTokens(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(normalizeText(raw).split("[^a-z0-9]+"))
+                .filter(token -> !token.isBlank())
+                .collect(Collectors.toSet());
+    }
+
+    private String normalizeText(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return normalized.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private LocalDateTime safeLocalDateTime(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime : LocalDateTime.MIN;
+    }
+
+    private double freshnessBonus(LocalDateTime createdAt) {
+        if (createdAt == null) {
+            return 0.0;
+        }
+        long daysOld = java.time.Duration.between(createdAt, LocalDateTime.now()).toDays();
+        if (daysOld <= 0) {
+            return 1.2;
+        }
+        if (daysOld <= 7) {
+            return 1.0;
+        }
+        if (daysOld <= 30) {
+            return 0.6;
+        }
+        return 0.2;
+    }
+
+    private record RecommendationCandidate(EducationalContent content, double score) {}
 
     private ContentDTO toDetailDTO(EducationalContent c, Long userId) {
         ContentDTO dto = new ContentDTO();

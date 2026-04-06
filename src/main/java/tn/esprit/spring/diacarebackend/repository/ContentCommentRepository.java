@@ -8,7 +8,11 @@ public interface ContentCommentRepository extends JpaRepository<ContentComment, 
 
     List<ContentComment> findByContentIdAndParentCommentIdIsNullAndIsApprovedTrueOrderByCreatedAtDesc(Long contentId);
 
+    List<ContentComment> findByContentIdAndParentCommentIdIsNullOrderByCreatedAtDesc(Long contentId);
+
     List<ContentComment> findByParentCommentIdAndIsApprovedTrue(Long parentId);
+
+    List<ContentComment> findByParentCommentIdOrderByCreatedAtAsc(Long parentId);
 
     long countByContentId(Long contentId);
 }

@@ -24,6 +24,7 @@ public interface EducationalContentRepository extends JpaRepository<EducationalC
     Page<EducationalContent> searchContent(@Param("keyword") String keyword, Pageable pageable);
 
     List<EducationalContent> findByIsFeaturedTrueAndIsPublishedTrue();
+    List<EducationalContent> findByIsPublishedTrue();
 
     @Modifying
     @Transactional

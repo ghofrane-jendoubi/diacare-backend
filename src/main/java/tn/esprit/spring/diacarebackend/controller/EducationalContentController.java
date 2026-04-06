@@ -1,7 +1,9 @@
 package tn.esprit.spring.diacarebackend.controller;
 
 import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
+import tn.esprit.spring.diacarebackend.DTOs.FeedbackRequest;
 import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
+import tn.esprit.spring.diacarebackend.Service.EmotionFeedbackService;
 import tn.esprit.spring.diacarebackend.Service.EducationalContentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,15 +16,18 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/education")
+@RequestMapping({"/api/education", "/api/educational"})
 @CrossOrigin(origins = "http://localhost:4200")
 public class EducationalContentController {
     private static final Logger LOGGER = LoggerFactory.getLogger(EducationalContentController.class);
 
     private final EducationalContentService contentService;
+    private final EmotionFeedbackService feedbackService;
 
-    public EducationalContentController(EducationalContentService contentService) {
+    public EducationalContentController(EducationalContentService contentService,
+                                       EmotionFeedbackService feedbackService) {
         this.contentService = contentService;
+        this.feedbackService = feedbackService;
     }
 
     // ===== ROUTES SPÉCIFIQUES EN PREMIER =====
@@ -37,6 +42,13 @@ public class EducationalContentController {
     public ResponseEntity<List<ContentSummaryDTO>> getMostViewed(
             @RequestParam(required = false) Long userId) {
         return ResponseEntity.ok(contentService.getMostViewed(userId));
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<ContentSummaryDTO>> getRecommendations(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String diabetesType) {
+        return ResponseEntity.ok(contentService.getRecommendations(userId, diabetesType));
     }
 
     @GetMapping("/contents/search")
@@ -96,6 +108,45 @@ public class EducationalContentController {
             @RequestParam(defaultValue = "1") Long userId) {
         boolean bookmarked = contentService.toggleBookmark(id, userId);
         return ResponseEntity.ok(Map.of("bookmarked", bookmarked));
+    }
+
+    @PostMapping("/contents/{id}/feedback")
+    public ResponseEntity<Map<String, Object>> submitFeedback(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long userId,
+            @RequestBody FeedbackRequest body) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Utilisateur non authentifié"));
+            }
+            feedbackService.submitFeedback(id, userId, body);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            LOGGER.error("Failed to save feedback for content id {}", id, e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/contents/{id}/feedback/exists")
+    public ResponseEntity<Map<String, Object>> checkFeedbackExists(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long userId) {
+        if (userId == null) {
+            return ResponseEntity.ok(Map.of("exists", false));
+        }
+        return ResponseEntity.ok(Map.of("exists", feedbackService.hasFeedback(id, userId)));
+    }
+
+    @GetMapping("/contents/{id}/feedback-exists")
+    public ResponseEntity<Map<String, Object>> checkFeedbackExistsAlias(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long userId) {
+        if (userId == null) {
+            return ResponseEntity.ok(Map.of("exists", false));
+        }
+        return ResponseEntity.ok(Map.of("exists", feedbackService.hasFeedback(id, userId)));
     }
 
     @PostMapping("/contents/{id}/comments")
