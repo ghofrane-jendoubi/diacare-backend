@@ -72,6 +72,8 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         // ✅ Servir les images des certificats
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/patients/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         // Tout le reste nécessite authentification
                         .anyRequest().permitAll() // ← mets authenticated() en production
                 )

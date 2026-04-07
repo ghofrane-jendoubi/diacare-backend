@@ -24,4 +24,9 @@ public class PatientSignupRequest {
     private Double height;
     private String emergencyContact;
     private String familyHistory;
+
+
+    // ── Change password (réutilisé pour PUT /{id}/password) ──
+    private String currentPassword;
+    private String newPassword;
 }
