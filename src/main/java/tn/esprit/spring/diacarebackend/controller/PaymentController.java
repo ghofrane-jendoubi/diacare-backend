@@ -44,8 +44,7 @@ public class PaymentController {
             // Configurer Stripe avec la clé secrète
             Stripe.apiKey = stripeSecretKey;
 
-            // Calculer le montant en millimes (Stripe utilise la plus petite unité de la devise)
-            // Pour TND, c'est 1000 = 1 TND
+
             long amountInMillimes = (long) (appointment.getFee() * 1000);
 
             System.out.println("💰 Montant: " + appointment.getFee() + " TND = " + amountInMillimes + " millimes");
