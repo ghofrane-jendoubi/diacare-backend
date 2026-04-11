@@ -2,6 +2,7 @@ package tn.esprit.spring.diacarebackend.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tn.esprit.spring.diacarebackend.dto.PatientSignupRequest;
 import tn.esprit.spring.diacarebackend.entities.Patient;
 import tn.esprit.spring.diacarebackend.services.PatientService;
@@ -19,8 +20,6 @@ public class PatientController {
     public PatientController(PatientService service) {
         this.service = service;
     }
-
-    // ================= AUTH =================
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody PatientSignupRequest request) {
@@ -44,17 +43,44 @@ public class PatientController {
         ));
     }
 
-    // ================= PATIENT =================
-
     @GetMapping("/all")
     public ResponseEntity<List<Patient>> getAllPatients() {
         return ResponseEntity.ok(service.getAllPatients());
     }
 
+    // ── Nouveaux ───────────────────────────────────────────
+
     @GetMapping("/{id}")
-    public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
-        return service.getPatientById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getPatientById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateInfo(
+            @PathVariable Long id,
+            @RequestBody PatientSignupRequest request) {
+        return ResponseEntity.ok(service.updateInfo(id, request));
+    }
+
+    @PutMapping("/{id}/sante")
+    public ResponseEntity<?> updateSante(
+            @PathVariable Long id,
+            @RequestBody PatientSignupRequest request) {
+        return ResponseEntity.ok(service.updateSante(id, request));
+    }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> changePassword(
+            @PathVariable Long id,
+            @RequestBody PatientSignupRequest request) {
+        service.changePassword(id, request);
+        return ResponseEntity.ok(Map.of("message", "Mot de passe modifié avec succès"));
+    }
+
+    @PostMapping("/{id}/upload-photo")
+    public ResponseEntity<?> uploadPhoto(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(service.uploadPhoto(id, file));
     }
 }
