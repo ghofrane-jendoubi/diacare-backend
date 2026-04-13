@@ -1,7 +1,10 @@
 package tn.esprit.spring.diacarebackend.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import org.springframework.data.annotation.CreatedDate;
+
 import java.util.ArrayList;
 import java.util.List;   // ← java.util.List PAS org.hibernate.mapping.List !
 
@@ -15,8 +18,12 @@ public class DietPlan {
 
     private String title;
     private String description;
-    private String status;        // "active", "completed", "paused"
+    private String status;// "active", "completed", "paused"
+
+
+
     private String startDate;
+
     private String endDate;
 
     private Integer targetCalories;
