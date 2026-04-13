@@ -2,12 +2,14 @@ package tn.esprit.spring.diacarebackend.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import tn.esprit.spring.diacarebackend.entities.Product;
 import tn.esprit.spring.diacarebackend.entities.ProductType;
@@ -16,13 +18,12 @@ import tn.esprit.spring.diacarebackend.services.ProductService;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -32,8 +33,14 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductRepository productRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     private final String UPLOAD_DIR = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+
+    @Value("${youtube.api.key:AIzaSyDyQh-_NjpckuimH4AjAvy89EUlFRjrQhk}")
+    private String youtubeApiKey;
+
+    // ==================== CRUD NORMAL ====================
 
     @PostMapping
     public ResponseEntity<?> add(@RequestBody Product product) {
@@ -65,44 +72,88 @@ public class ProductController {
         }
     }
 
-    @PutMapping(value = "/upload/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateProductWithImage(
-            @PathVariable Long id,
-            @RequestParam("name") String name,
-            @RequestParam("price") double price,
-            @RequestParam("type") String type,
-            @RequestParam(value = "barcode", required = false) String barcode,
-            @RequestParam(value = "stock", required = false) Integer stock,
-            @RequestParam(value = "sugarLevel", required = false) Double sugarLevel,
-            @RequestParam(value = "description", required = false) String description,
-            @RequestParam(value = "image", required = false) MultipartFile file
-    ) {
+    // ==================== YOUTUBE VIDEOS ENDPOINT ====================
+
+    @GetMapping("/{id}/videos")
+    public ResponseEntity<Map<String, Object>> getProductVideos(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
         try {
             Product product = productService.getProduct(id);
 
-            product.setName(name);
-            product.setPrice(price);
-            product.setType(ProductType.valueOf(type));
-
-            if (barcode != null) product.setBarcode(barcode);
-            if (stock != null) product.setStock(stock);
-            if (sugarLevel != null) product.setSugarLevel(sugarLevel);
-            if (description != null) product.setDescription(description);
-
-            if (file != null && !file.isEmpty()) {
-                String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-                Path filePath = Paths.get(UPLOAD_DIR + fileName);
-                Files.copy(file.getInputStream(), filePath);
-
-                product.setImage(fileName);
+            if (product == null) {
+                response.put("error", "Product not found");
+                return ResponseEntity.status(404).body(response);
             }
 
-            return ResponseEntity.ok(productRepository.save(product));
+            // Ne chercher des vidéos que pour les produits médicaux
+            if (product.getType() == ProductType.MEDICAL) {
+                String searchQuery = URLEncoder.encode(product.getName() + " tutoriel utilisation", StandardCharsets.UTF_8);
+                String url = "https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=4&type=video&q=" + searchQuery + "&key=" + youtubeApiKey;
+
+                ResponseEntity<Map> apiResponse = restTemplate.getForEntity(url, Map.class);
+
+                if (apiResponse.getBody() != null) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> items = (List<Map<String, Object>>) apiResponse.getBody().get("items");
+
+                    List<Map<String, Object>> videos = new ArrayList<>();
+                    if (items != null) {
+                        for (Map<String, Object> item : items) {
+                            Map<String, Object> video = new HashMap<>();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> snippet = (Map<String, Object>) item.get("snippet");
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> idMap = (Map<String, Object>) item.get("id");
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> thumbnails = (Map<String, Object>) snippet.get("thumbnails");
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> mediumThumb = (Map<String, Object>) thumbnails.get("medium");
+
+                            video.put("videoId", idMap.get("videoId"));
+                            video.put("title", snippet.get("title"));
+                            video.put("description", snippet.get("description"));
+                            video.put("thumbnailUrl", mediumThumb != null ? mediumThumb.get("url") : null);
+                            videos.add(video);
+                        }
+                    }
+                    response.put("videos", videos);
+                    response.put("productName", product.getName());
+                    response.put("productType", "MEDICAL");
+                } else {
+                    response.put("videos", new ArrayList<>());
+                    response.put("message", "No videos found");
+                }
+            } else {
+                response.put("videos", new ArrayList<>());
+                response.put("message", "Videos only available for medical products");
+                response.put("productType", "ALIMENTAIRE");
+            }
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(e.getMessage());
+            log.error("Error fetching YouTube videos: {}", e.getMessage(), e);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
+
+    // ==================== UPDATE PRODUCT ====================
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody Product product) {
+        try {
+            product.setId(id);
+            Product updatedProduct = productService.updateProduct(product);
+            log.info("Product updated successfully: {}", id);
+            return ResponseEntity.ok(updatedProduct);
+        } catch (Exception e) {
+            log.error("Error updating product {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
@@ -116,6 +167,8 @@ public class ProductController {
         }
     }
 
+    // ==================== UPLOAD WITH IMAGE ====================
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> addProductWithImage(
             @RequestParam("name") String name,
@@ -128,33 +181,22 @@ public class ProductController {
             @RequestParam("image") MultipartFile file
     ) {
         try {
-            // Validate file
             if (file.isEmpty()) {
                 log.warn("Empty file received");
                 return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
             }
 
-            // Validate file type
             String contentType = file.getContentType();
             if (contentType == null || !contentType.startsWith("image/")) {
                 log.warn("Invalid file type: {}", contentType);
                 return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed"));
             }
 
-            // Create upload directory if it doesn't exist
             File uploadDir = new File(UPLOAD_DIR);
             if (!uploadDir.exists()) {
-                boolean created = uploadDir.mkdirs();
-                if (created) {
-                    log.info("Upload directory created at: {}", UPLOAD_DIR);
-                } else {
-                    log.error("Failed to create upload directory at: {}", UPLOAD_DIR);
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(Map.of("error", "Failed to create upload directory"));
-                }
+                uploadDir.mkdirs();
             }
 
-            // Generate unique filename
             String originalFilename = file.getOriginalFilename();
             String fileExtension = "";
             if (originalFilename != null && originalFilename.contains(".")) {
@@ -162,12 +204,10 @@ public class ProductController {
             }
             String fileName = UUID.randomUUID() + fileExtension;
 
-            // Save file
             Path filePath = Paths.get(UPLOAD_DIR + fileName);
             Files.copy(file.getInputStream(), filePath);
             log.info("File saved at: {}", filePath.toString());
 
-            // Create product
             Product product = new Product();
             product.setName(name);
             product.setPrice(price);
@@ -203,6 +243,8 @@ public class ProductController {
                     .body(Map.of("error", "Failed to save product: " + e.getMessage()));
         }
     }
+
+    // ==================== GET IMAGE ====================
 
     @GetMapping("/images/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {

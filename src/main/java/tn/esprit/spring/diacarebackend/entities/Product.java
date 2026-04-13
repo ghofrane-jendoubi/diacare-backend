@@ -25,8 +25,7 @@ import lombok.Data;
 
         private double sugarLevel;
 
-        @ManyToOne
-        private Category category;
+
     }
 
 
