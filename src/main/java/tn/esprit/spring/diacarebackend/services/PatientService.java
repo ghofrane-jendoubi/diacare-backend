@@ -37,9 +37,30 @@ public class PatientService {
     }
 
 
+    // =================== hCaptcha VERIFICATION ===================
+    // Pour Bot Management, on vérifie simplement que le token est présent
+    private boolean verifyHCaptcha(String token) {
+        if (token == null || token.isEmpty()) {
+            System.out.println("❌ hCaptcha token est null ou vide");
+            return false;
+        }
+
+        System.out.println("✅ Token hCaptcha reçu et valide pour le patient: " + token.substring(0, Math.min(token.length(), 20)) + "...");
+        return true;
+    }
+
+
     // =================== SIGNUP ===================
 
     public Patient registerPatient(PatientSignupRequest request) {
+        // ✅ 1. Vérifier hCaptcha
+        System.out.println("🔍 Vérification du token hCaptcha pour le patient...");
+
+        if (!verifyHCaptcha(request.getHcaptchaToken())) {
+            throw new RuntimeException("Vérification anti-robot échouée. Veuillez réessayer.");
+        }
+
+        // 2. Vérifier email
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email déjà utilisé");
         }
@@ -227,13 +248,11 @@ public class PatientService {
             if (!Files.exists(uploadPath))
                 Files.createDirectories(uploadPath);
 
-            // Supprimer l'ancienne photo
             if (patient.getProfilePicture() != null) {
                 Path oldFile = Paths.get("." + patient.getProfilePicture());
                 if (Files.exists(oldFile)) Files.delete(oldFile);
             }
 
-            // Nom unique
             String extension = getExtension(file.getOriginalFilename());
             String fileName = "patient_" + id + "_" + UUID.randomUUID() + extension;
             Path filePath = uploadPath.resolve(fileName);

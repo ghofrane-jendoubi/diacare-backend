@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tn.esprit.spring.diacarebackend.entities.CertificateStatus;
 import tn.esprit.spring.diacarebackend.dto.NutritionistSignupRequest;
-
 import tn.esprit.spring.diacarebackend.entities.Nutritionist;
 import tn.esprit.spring.diacarebackend.services.NutritionistSignupService;
+import tn.esprit.spring.diacarebackend.services.PasswordResetService;
 
 import java.util.List;
 import java.util.Map;
@@ -19,9 +19,12 @@ import java.util.Map;
 public class NutritionistSignupController {
 
     private final NutritionistSignupService service;
+    private final PasswordResetService passwordResetService;
 
-    public NutritionistSignupController(NutritionistSignupService service) {
+    public NutritionistSignupController(NutritionistSignupService service,
+                                        PasswordResetService passwordResetService) {
         this.service = service;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping(value = "/signup", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -63,7 +66,6 @@ public class NutritionistSignupController {
         return ResponseEntity.ok(service.getByStatus(CertificateStatus.PENDING));
     }
 
-
     @GetMapping("/all")
     public ResponseEntity<List<Nutritionist>> getAllNutritionists() {
         return ResponseEntity.ok(service.getAllNutritionists());
@@ -74,4 +76,25 @@ public class NutritionistSignupController {
         return ResponseEntity.ok(service.getNutritionistById(id));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        passwordResetService.sendResetCode(request.get("email"));
+        return ResponseEntity.ok(Map.of("message", "Code envoyé à votre email"));
+    }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestBody Map<String, String> request) {
+        passwordResetService.verifyCode(request.get("email"), request.get("code"));
+        return ResponseEntity.ok(Map.of("message", "Code valide"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        passwordResetService.resetPassword(
+                request.get("email"),
+                request.get("code"),
+                request.get("newPassword")
+        );
+        return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès"));
+    }
 }

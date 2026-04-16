@@ -13,4 +13,5 @@ public class NutritionistSignupRequest {
     private Integer yearsOfExperience;
     private String workplace;
     private String workplaceAddress;
+    private String hcaptchaToken;
 }

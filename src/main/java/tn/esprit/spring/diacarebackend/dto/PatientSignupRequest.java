@@ -29,4 +29,6 @@ public class PatientSignupRequest {
     // ── Change password (réutilisé pour PUT /{id}/password) ──
     private String currentPassword;
     private String newPassword;
+
+    private String hcaptchaToken;
 }

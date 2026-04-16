@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tn.esprit.spring.diacarebackend.dto.PatientSignupRequest;
 import tn.esprit.spring.diacarebackend.entities.Patient;
+import tn.esprit.spring.diacarebackend.services.PasswordResetService;
 import tn.esprit.spring.diacarebackend.services.PatientService;
 
 import java.util.List;
@@ -16,9 +17,12 @@ import java.util.Map;
 public class PatientController {
 
     private final PatientService service;
+    private final PasswordResetService passwordResetService;
 
-    public PatientController(PatientService service) {
+    public PatientController(PatientService service,
+                             PasswordResetService passwordResetService) {
         this.service = service;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/signup")
@@ -82,5 +86,32 @@ public class PatientController {
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(service.uploadPhoto(id, file));
+    }
+
+
+    ///   password oubliee
+
+    // ── Mot de passe oublié ─────────────────────────────────
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        passwordResetService.sendResetCode(request.get("email"));
+        return ResponseEntity.ok(Map.of("message", "Code envoyé à votre email"));
+    }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<?> verifyResetCode(@RequestBody Map<String, String> request) {
+        passwordResetService.verifyCode(request.get("email"), request.get("code"));
+        return ResponseEntity.ok(Map.of("message", "Code valide"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        passwordResetService.resetPassword(
+                request.get("email"),
+                request.get("code"),
+                request.get("newPassword")
+        );
+        return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès"));
     }
 }
