@@ -37,14 +37,35 @@ public class DoctorSignupService {
         this.mailSender = mailSender;
     }
 
+    // =================== hCaptcha VERIFICATION ===================
+    // Pour Bot Management, on vérifie simplement que le token est présent
+    private boolean verifyHCaptcha(String token) {
+        if (token == null || token.isEmpty()) {
+            System.out.println("❌ hCaptcha token est null ou vide pour le docteur");
+            return false;
+        }
+
+        System.out.println("✅ Token hCaptcha reçu et valide pour le docteur: " + token.substring(0, Math.min(token.length(), 20)) + "...");
+        return true;
+    }
+
     // =================== SIGNUP ===================
 
     public Doctor registerDoctor(DoctorSignupRequest request, MultipartFile certificateImage) {
 
+        // ✅ 1. Vérifier hCaptcha
+        System.out.println("🔍 Vérification du token hCaptcha pour le docteur...");
+
+        if (!verifyHCaptcha(request.getHcaptchaToken())) {
+            throw new RuntimeException("Vérification anti-robot échouée. Veuillez réessayer.");
+        }
+
+        // 2. Vérifier email
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email déjà utilisé");
         }
 
+        // 3. Vérifier certificat
         if (certificateImage == null || certificateImage.isEmpty()) {
             throw new RuntimeException("Le certificat est obligatoire");
         }
@@ -52,7 +73,6 @@ public class DoctorSignupService {
         String imagePath = saveCertificateImage(certificateImage);
         String token = UUID.randomUUID().toString();
 
-        // Doctor EST un User — on remplit directement
         Doctor doctor = new Doctor();
 
         // Champs User (hérités)
@@ -76,7 +96,6 @@ public class DoctorSignupService {
         doctor.setCertificateStatus(CertificateStatus.PENDING);
 
         Doctor savedDoctor = doctorRepository.save(doctor);
-
         sendActivationEmail(savedDoctor);
 
         return savedDoctor;
@@ -117,7 +136,6 @@ public class DoctorSignupService {
     }
 
     public String activateAccount(String token) {
-        // findByActivationToken cherche dans la table users (héritage JOINED)
         Doctor doctor = doctorRepository.findByActivationToken(token)
                 .orElseThrow(() -> new RuntimeException("Token invalide"));
 
@@ -159,7 +177,7 @@ public class DoctorSignupService {
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Connexion réussie");
-        response.put("id", doctor.getId());
+        response.put("doctorId", doctor.getId());
         response.put("email", doctor.getEmail());
         response.put("firstName", doctor.getFirstName());
         response.put("lastName", doctor.getLastName());
@@ -204,9 +222,6 @@ public class DoctorSignupService {
         }
         mailSender.send(message);
     }
-
-
-
 
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();

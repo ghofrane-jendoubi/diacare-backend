@@ -49,6 +49,10 @@ public class User {
     private String activationToken;
     private LocalDateTime activationTokenExpiry;
 
+    // ← AJOUTER ces deux champs
+    private String resetPasswordToken;
+    private LocalDateTime resetPasswordTokenExpiry;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

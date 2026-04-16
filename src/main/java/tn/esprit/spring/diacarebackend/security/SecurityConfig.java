@@ -74,6 +74,18 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/patients/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/patients/forgot-password").permitAll()
+                        .requestMatchers("/api/patients/verify-reset-code").permitAll()
+                        .requestMatchers("/api/patients/reset-password").permitAll()
+                        .requestMatchers("/api/admins/forgot-password").permitAll()
+                        .requestMatchers("/api/admins/verify-reset-code").permitAll()
+                        .requestMatchers("/api/admins/reset-password").permitAll()
+                        .requestMatchers("/api/doctors/forgot-password").permitAll()
+                        .requestMatchers("/api/doctors/verify-reset-code").permitAll()
+                        .requestMatchers("/api/doctors/reset-password").permitAll()
+                        .requestMatchers("/api/nutritionists/forgot-password").permitAll()
+                        .requestMatchers("/api/nutritionists/verify-reset-code").permitAll()
+                        .requestMatchers("/api/nutritionists/reset-password").permitAll()
                         // Tout le reste nécessite authentification
                         .anyRequest().permitAll() // ← mets authenticated() en production
                 )

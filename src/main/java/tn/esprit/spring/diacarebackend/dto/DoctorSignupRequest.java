@@ -15,4 +15,6 @@ public class DoctorSignupRequest {
     private Integer yearsOfExperience;
     private Double consultationFee;
     private String hospital;
+
+    private String hcaptchaToken;
 }
