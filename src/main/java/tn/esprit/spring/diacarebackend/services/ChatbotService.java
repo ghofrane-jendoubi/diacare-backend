@@ -1,4 +1,4 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
 import tn.esprit.spring.diacarebackend.entities.ChatbotConversation;
 import tn.esprit.spring.diacarebackend.entities.ChatbotMessage;
@@ -19,8 +19,14 @@ public class ChatbotService {
     private final ChatbotMessageRepository msgRepo;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("$AIzaSyCaqVu7MY4T3h-bfK7xA1riKpexCR-MlJU")
+    @Value("${gemini.api.key:AIzaSyCaqVu7MY4T3h-bfK7xA1riKpexCR-MlJU}")
     private String geminiKey;
+
+    @Value("${openrouter.api.key:}")
+    private String openRouterKey;
+
+    private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+    private static final String FREE_MODEL = "meta-llama/llama-3.2-3b-instruct:free";
 
     // Prompt système pour le chatbot diabète
     private static final String SYSTEM_PROMPT =
@@ -91,20 +97,15 @@ public class ChatbotService {
 
     private String generateAIResponse(String userMessage,
                                       List<ChatbotMessage> history) {
-        try {
-            // Essayer Gemini d'abord
-            return callGemini(userMessage, history);
-        } catch (Exception e) {
-            System.err.println("Gemini échoué, fallback rule-based: " + e.getMessage());
-            // Fallback sur les règles si Gemini échoue
-            return generateRuleBasedResponse(userMessage.toLowerCase().trim());
-        }
+        // Mode offline : utiliser directement le rule-based (APIs rate-limited)
+        return generateRuleBasedResponse(userMessage.toLowerCase().trim());
     }
 
     private String callGemini(String userMessage,
                               List<ChatbotMessage> history) {
+        // Utiliser le modèle Gemini 1.0 Pro (stable et disponible)
         String url = "https://generativelanguage.googleapis.com/v1beta/" +
-                "models/gemini-1.5-flash:generateContent?key=" + geminiKey;
+                "models/gemini-2.0-flash:generateContent?key=" + geminiKey;
 
         // Construire le contexte avec l'historique (max 10 derniers messages)
         List<Map<String, Object>> contents = new ArrayList<>();
@@ -163,7 +164,45 @@ public class ChatbotService {
         throw new RuntimeException("Réponse Gemini vide");
     }
 
-    // ===== FALLBACK RULE-BASED (si Gemini échoue) =====
+    // ===== OPENROUTER FALLBACK =====
+    private String callOpenRouter(String userMessage, List<ChatbotMessage> history) {
+        if (openRouterKey == null || openRouterKey.isBlank()) {
+            throw new RuntimeException("OpenRouter API key non configurée");
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + openRouterKey);
+        headers.set("HTTP-Referer", "https://diacare.app");
+        headers.set("X-Title", "DiaCare");
+
+        // Construire l'historique pour OpenRouter
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", SYSTEM_PROMPT));
+
+        int startIdx = Math.max(0, history.size() - 5);
+        for (int i = startIdx; i < history.size() - 1; i++) {
+            ChatbotMessage msg = history.get(i);
+            String role = msg.getSender() == ChatbotMessage.Sender.PATIENT ? "user" : "assistant";
+            messages.add(Map.of("role", role, "content", msg.getMessage()));
+        }
+        messages.add(Map.of("role", "user", "content", userMessage));
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("model", FREE_MODEL);
+        request.put("messages", messages);
+        request.put("temperature", 0.7);
+        request.put("max_tokens", 400);
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                OPENROUTER_URL, new HttpEntity<>(request, headers), Map.class);
+
+        List<Map> choices = (List<Map>) response.getBody().get("choices");
+        Map message = (Map) choices.get(0).get("message");
+        return (String) message.get("content");
+    }
+
+    // ===== FALLBACK RULE-BASED (si tout échoue) =====
     private String generateRuleBasedResponse(String message) {
 
         if (containsAny(message, "bonjour", "bonsoir", "salut", "hello")) {

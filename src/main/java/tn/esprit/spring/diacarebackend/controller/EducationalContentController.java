@@ -1,10 +1,11 @@
 package tn.esprit.spring.diacarebackend.controller;
 
-import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
-import tn.esprit.spring.diacarebackend.DTOs.FeedbackRequest;
-import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
-import tn.esprit.spring.diacarebackend.Service.EmotionFeedbackService;
-import tn.esprit.spring.diacarebackend.Service.EducationalContentService;
+import tn.esprit.spring.diacarebackend.dto.ContentDTO;
+import tn.esprit.spring.diacarebackend.dto.FeedbackRequest;
+import tn.esprit.spring.diacarebackend.dto.ContentSummaryDTO;
+import tn.esprit.spring.diacarebackend.dto.EmotionalEvolutionDTO;
+import tn.esprit.spring.diacarebackend.services.EmotionFeedbackService;
+import tn.esprit.spring.diacarebackend.services.EducationalContentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,15 @@ public class EducationalContentController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String diabetesType) {
         return ResponseEntity.ok(contentService.getRecommendations(userId, diabetesType));
+    }
+
+    @GetMapping("/recommendations/adaptive")
+    public ResponseEntity<List<ContentSummaryDTO>> getAdaptiveRecommendations(
+            @RequestParam(required = false) Long patientId) {
+        if (patientId == null) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+        return ResponseEntity.ok(contentService.getAdaptiveRecommendations(patientId));
     }
 
     @GetMapping("/contents/search")
@@ -174,5 +184,16 @@ public class EducationalContentController {
             LOGGER.error("Failed to add comment for content id {}", id, e);
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // ===== ENDPOINTS MÉDECIN - ÉVOLUTION ÉMOTIONNELLE =====
+
+    @GetMapping("/doctor/patient/emotional-evolution")
+    public ResponseEntity<List<EmotionalEvolutionDTO>> getEmotionalEvolution(
+            @RequestParam(required = false) Long patientId) {
+        if (patientId == null) {
+            return ResponseEntity.badRequest().body(List.of());
+        }
+        return ResponseEntity.ok(feedbackService.getEmotionalEvolution(patientId));
     }
 }

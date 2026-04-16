@@ -1,6 +1,7 @@
 package tn.esprit.spring.diacarebackend.repository;
 
 import tn.esprit.spring.diacarebackend.entities.ContentFeedback;
+import tn.esprit.spring.diacarebackend.entities.Emotion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,4 +28,13 @@ public interface ContentFeedbackRepository extends JpaRepository<ContentFeedback
     List<ContentFeedback> findByPatientId(@Param("patientId") Long patientId);
 
     List<ContentFeedback> findAllByOrderByCreatedAtDesc();
+
+    List<ContentFeedback> findTop5ByPatientIdOrderByCreatedAtDesc(Long patientId);
+
+    List<ContentFeedback> findByPatientIdOrderByCreatedAtAsc(Long patientId);
+
+    // Récupérer l'émotion dominante d'un contenu (celle avec le plus de feedbacks)
+    @Query("SELECT f.emotion FROM ContentFeedback f WHERE f.contentId = :contentId " +
+           "GROUP BY f.emotion ORDER BY COUNT(f) DESC")
+    List<Emotion> findDominantEmotionsByContentId(@Param("contentId") Long contentId);
 }

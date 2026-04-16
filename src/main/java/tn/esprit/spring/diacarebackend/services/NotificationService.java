@@ -1,4 +1,4 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
 import tn.esprit.spring.diacarebackend.entities.Notification;
 import tn.esprit.spring.diacarebackend.repository.NotificationRepository;

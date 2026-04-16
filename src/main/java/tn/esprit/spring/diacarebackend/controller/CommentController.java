@@ -1,6 +1,6 @@
 package tn.esprit.spring.diacarebackend.controller;
 
-import tn.esprit.spring.diacarebackend.DTOs.CommentDTO;
+import tn.esprit.spring.diacarebackend.dto.CommentDTO;
 import tn.esprit.spring.diacarebackend.entities.ContentComment;
 import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package tn.esprit.spring.diacarebackend.controller;
 
-import tn.esprit.spring.diacarebackend.DTOs.PatientFeedbackDto;
-import tn.esprit.spring.diacarebackend.Service.EmotionFeedbackService;
+import tn.esprit.spring.diacarebackend.dto.PatientFeedbackDto;
+import tn.esprit.spring.diacarebackend.services.EmotionFeedbackService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;

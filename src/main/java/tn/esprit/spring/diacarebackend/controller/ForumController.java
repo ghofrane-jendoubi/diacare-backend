@@ -2,7 +2,9 @@ package tn.esprit.spring.diacarebackend.controller;
 
 import tn.esprit.spring.diacarebackend.entities.*;
 import tn.esprit.spring.diacarebackend.repository.*;
-import tn.esprit.spring.diacarebackend.Service.ForumModerationService;
+import tn.esprit.spring.diacarebackend.dto.TopContributorDTO;
+import tn.esprit.spring.diacarebackend.dto.CategoryStatsDTO;
+import tn.esprit.spring.diacarebackend.services.ForumModerationService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -251,5 +253,74 @@ public class ForumController {
                 "blocked", false,
                 "comment", comment
         ));
+    }
+
+    // ===== STATISTIQUES =====
+
+    @GetMapping("/stats/top-liked")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getTopLikedPosts(
+            @RequestParam(defaultValue = "5") int limit) {
+        Page<ForumPost> postsPage = postRepo.findTopLikedPosts(PageRequest.of(0, limit));
+        java.util.List<ForumPost> posts = postsPage.getContent();
+        java.util.List<java.util.Map<String, Object>> topPosts = posts.stream()
+                .map(post -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", post.getId());
+                    map.put("title", post.getTitle());
+                    map.put("content", post.getContent());
+                    map.put("likeCount", post.getLikeCount());
+                    map.put("commentCount", post.getCommentCount());
+                    map.put("patientName", post.getPatientName());
+                    map.put("category", post.getCategory().name());
+                    map.put("createdAt", post.getCreatedAt());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(topPosts);
+    }
+
+    @GetMapping("/stats/category-counts")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getCategoryCounts() {
+        java.util.List<tn.esprit.spring.diacarebackend.dto.CategoryStatsDTO> counts = postRepo.countPostsByCategory();
+        
+        java.util.List<java.util.Map<String, Object>> categoryStats = counts.stream()
+                .map(count -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("category", count.getCategory() != null ? count.getCategory().toString() : "UNKNOWN");
+                    map.put("count", count.getCount());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        
+        return ResponseEntity.ok(categoryStats);
+    }
+
+    @GetMapping("/stats/top-contributors")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getTopContributors(
+            @RequestParam(defaultValue = "5") int limit) {
+        java.util.List<Object[]> results = postRepo.findTopContributorsRaw(PageRequest.of(0, limit));
+        java.util.List<java.util.Map<String, Object>> topContributors = results.stream()
+                .map(row -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("patientId", ((Number) row[0]).longValue());
+                    map.put("patientName", (String) row[1]);
+                    map.put("postCount", ((Number) row[2]).longValue());
+                    map.put("totalLikes", ((Number) row[3]).longValue());
+                    map.put("totalComments", ((Number) row[4]).longValue());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(topContributors);
+    }
+
+    private String getCategoryLabel(ForumPost.Category category) {
+        switch (category) {
+            case EXPERIENCE: return "Expériences";
+            case RECETTE: return "Recettes";
+            case ASTUCE: return "Astuces";
+            case QUESTION: return "Questions";
+            case MOTIVATION: return "Motivation";
+            default: return category.name();
+        }
     }
 }

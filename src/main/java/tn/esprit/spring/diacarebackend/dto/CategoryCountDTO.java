@@ -1,4 +1,4 @@
-package tn.esprit.spring.diacarebackend.DTOs;
+package tn.esprit.spring.diacarebackend.dto;
 
 import lombok.Data;
 

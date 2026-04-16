@@ -1,17 +1,21 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
-import tn.esprit.spring.diacarebackend.DTOs.ContentDTO;
-import tn.esprit.spring.diacarebackend.DTOs.ContentSummaryDTO;
+import tn.esprit.spring.diacarebackend.dto.ContentDTO;
+import tn.esprit.spring.diacarebackend.dto.ContentSummaryDTO;
 import tn.esprit.spring.diacarebackend.entities.AppUser;
 import tn.esprit.spring.diacarebackend.entities.EducationalContent;
 import tn.esprit.spring.diacarebackend.entities.ContentComment;
 import tn.esprit.spring.diacarebackend.entities.ContentLike;
 import tn.esprit.spring.diacarebackend.entities.ContentBookmark;
+import tn.esprit.spring.diacarebackend.entities.Emotion;
 import tn.esprit.spring.diacarebackend.repository.AppUserRepository;
+import tn.esprit.spring.diacarebackend.repository.ContentFeedbackRepository;
 import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
 import tn.esprit.spring.diacarebackend.repository.ContentCommentRepository;
 import tn.esprit.spring.diacarebackend.repository.ContentLikeRepository;
 import tn.esprit.spring.diacarebackend.repository.ContentBookmarkRepository;
+import tn.esprit.spring.diacarebackend.repository.PatientEmotionalStateRepository;
+import tn.esprit.spring.diacarebackend.entities.PatientEmotionalState;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,18 +44,24 @@ public class EducationalContentService {
     private final ContentCommentRepository commentRepo;
     private final ContentBookmarkRepository bookmarkRepo;
     private final AppUserRepository appUserRepo;
+    private final PatientEmotionalStateRepository emotionalStateRepo;
+    private final ContentFeedbackRepository feedbackRepo;
 
     public EducationalContentService(
             EducationalContentRepository contentRepo,
             ContentLikeRepository likeRepo,
             ContentCommentRepository commentRepo,
             ContentBookmarkRepository bookmarkRepo,
-            AppUserRepository appUserRepo) {
+            AppUserRepository appUserRepo,
+            PatientEmotionalStateRepository emotionalStateRepo,
+            ContentFeedbackRepository feedbackRepo) {
         this.contentRepo = contentRepo;
         this.likeRepo = likeRepo;
         this.commentRepo = commentRepo;
         this.bookmarkRepo = bookmarkRepo;
         this.appUserRepo = appUserRepo;
+        this.emotionalStateRepo = emotionalStateRepo;
+        this.feedbackRepo = feedbackRepo;
     }
 
     public Page<ContentSummaryDTO> getAllContents(int page, int size, Long userId) {
@@ -166,6 +176,89 @@ public class EducationalContentService {
                 .filter(c -> c != null)
                 .map(c -> toSummaryDTO(c, userId))
                 .collect(Collectors.toList());
+    }
+
+    // ===== RECOMMANDATIONS ADAPTATIVES BASÉES SUR L'ÉMOTION + POPULARITÉ =====
+
+    public List<ContentSummaryDTO> getAdaptiveRecommendations(Long patientId) {
+        // 1. Récupérer l'état émotionnel du patient
+        PatientEmotionalState state = emotionalStateRepo.findByPatientId(patientId).orElse(null);
+        double emotionalScore = (state != null) ? state.getAverageScore() : 0.0;
+
+        // 2. Déterminer les préférences en fonction de l'état émotionnel
+        final EducationalContent.DifficultyLevel preferredDifficulty;
+        final EducationalContent.ContentType preferredContentType;
+        final boolean patientIsHappy = emotionalScore > 0.3;
+        final boolean patientIsSad = emotionalScore < -0.3;
+
+        if (patientIsSad) {
+            // Anxiété -> contenus légers, vidéos, niveau débutant
+            preferredDifficulty = EducationalContent.DifficultyLevel.BEGINNER;
+            preferredContentType = EducationalContent.ContentType.VIDEO;
+        } else if (patientIsHappy) {
+            // Bien-être -> quiz, articles avancés
+            preferredDifficulty = EducationalContent.DifficultyLevel.ADVANCED;
+            preferredContentType = EducationalContent.ContentType.QUIZ;
+        } else {
+            preferredDifficulty = null;
+            preferredContentType = null;
+        }
+
+        // 3. Récupérer tous les contenus publiés
+        List<EducationalContent> allContents = contentRepo.findByIsPublishedTrue();
+
+        // 4. Calculer le score pour chaque contenu (algorithme hybride)
+        return allContents.stream()
+                .map(c -> {
+                    int score = 0;
+
+                    // 🎯 ÉMOTION : Bonus si contenu HAPPY et patient HAPPY
+                    Emotion contentEmotion = getDominantEmotion(c.getId());
+                    if (patientIsHappy && contentEmotion == Emotion.HAPPY) {
+                        score += 15; // Priorité aux contenus positifs
+                    } else if (patientIsSad && contentEmotion == Emotion.HAPPY) {
+                        score += 12; // Contenus réconfortants pour patients anxieux
+                    }
+
+                    // ❤️ POPULARITÉ : Basée sur les likes (x2 pour valoriser l'engagement)
+                    Long likeCount = c.getLikeCount() != null ? c.getLikeCount() : 0L;
+                    score += likeCount.intValue() * 2;
+
+                    // 👁️ VUES : Bonus pour contenus populaires
+                    if (c.getViewCount() != null && c.getViewCount() > 100) {
+                        score += 3;
+                    }
+
+                    // 📚 DIFFICULTÉ : Bonus si correspond à l'état émotionnel
+                    if (preferredDifficulty != null && preferredDifficulty.equals(c.getDifficultyLevel())) {
+                        score += 10;
+                    }
+
+                    // 🎬 TYPE : Bonus si correspond aux préférences
+                    if (preferredContentType != null && preferredContentType.equals(c.getContentType())) {
+                        score += 8;
+                    }
+
+                    // 🆕 FRAÎCHEUR : Bonus pour contenus récents
+                    if (c.getCreatedAt() != null && c.getCreatedAt().isAfter(LocalDateTime.now().minusDays(30))) {
+                        score += 5;
+                    }
+
+                    return Map.entry(c, score);
+                })
+                .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
+                .limit(6)
+                .map(e -> toSummaryDTO(e.getKey(), patientId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère l'émotion dominante d'un contenu basée sur les feedbacks.
+     * Retourne HAPPY si pas de feedbacks (optimiste par défaut).
+     */
+    private Emotion getDominantEmotion(Long contentId) {
+        List<Emotion> emotions = feedbackRepo.findDominantEmotionsByContentId(contentId);
+        return emotions.isEmpty() ? Emotion.HAPPY : emotions.get(0);
     }
 
     // ===== MÉTHODES AJOUTÉES POUR LES COMMENTAIRES =====

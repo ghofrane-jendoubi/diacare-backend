@@ -1,4 +1,4 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
 import tn.esprit.spring.diacarebackend.entities.GlycemieRecord;
 import tn.esprit.spring.diacarebackend.repository.GlycemieRecordRepository;
@@ -16,11 +16,17 @@ import java.util.stream.Collectors;
 @Service
 public class IaDashboardService {
 
-    @Value("${gemini.api.key:demo}")
+    @Value("${gemini.api.key:AIzaSyCaqVu7MY4T3h-bfK7xA1riKpexCR-MlJU}")
     private String geminiKey;
+
+    @Value("${openrouter.api.key:}")
+    private String openRouterKey;
 
     private final GlycemieRecordRepository glycemieRepo;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+    private static final String FREE_MODEL = "meta-llama/llama-3.2-3b-instruct:free";
 
     public IaDashboardService(GlycemieRecordRepository glycemieRepo) {
         this.glycemieRepo = glycemieRepo;
@@ -54,15 +60,17 @@ public class IaDashboardService {
         dashboard.put("totalMesures", records.size());
 
         // Mapper l'historique avec gestion du null
-        dashboard.put("historique", records.stream().map(r -> {
-            Map<String, Object> map = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        java.util.List<java.util.Map<String, Object>> historique = records.stream().map(r -> {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("id", r.getId());
             map.put("valeur", r.getValeur());
             map.put("moment", r.getMoment().name());
             // Si measuredAt est null, on utilise la date courante
             map.put("date", r.getMeasuredAt() != null ? r.getMeasuredAt().toString() : LocalDateTime.now().toString());
             return map;
-        }).collect(Collectors.toList()));
+        }).collect(Collectors.toList());
+        dashboard.put("historique", historique);
 
         if (records.isEmpty()) {
             dashboard.put("scoresSante", getScoreDefaut());
@@ -97,7 +105,9 @@ public class IaDashboardService {
         dashboard.put("scoresSante", calculerScores(records, moyenne));
 
         // Alertes intelligentes
-        dashboard.put("alertes", genererAlertes(records, moyenne, derniere));
+        @SuppressWarnings("unchecked")
+        java.util.List<java.util.Map<String, Object>> alertes = genererAlertes(records, moyenne, derniere);
+        dashboard.put("alertes", alertes);
 
         // Prédiction IA via Gemini
         dashboard.put("prediction", genererPrediction(records, moyenne));
@@ -273,36 +283,12 @@ public class IaDashboardService {
         }
     }
 
-    // ===== APPEL GEMINI =====
+    // ===== MODE OFFLINE - Pas d'appel API externe =====
+    // Les APIs externes (Gemini, OpenRouter) sont rate-limited
+    // Nous utilisons directement les fallbacks locaux 100% fonctionnels
     private String callGemini(String prompt) {
-        if ("demo".equals(geminiKey)) return "{}";
-        try {
-            String url = "https://generativelanguage.googleapis.com/v1beta/" +
-                    "models/gemini-1.5-pro-latest:generateContent?key=" + geminiKey;
-
-            Map<String, Object> request = new HashMap<>();
-            request.put("contents", List.of(Map.of(
-                    "parts", List.of(Map.of("text", prompt))
-            )));
-            request.put("generationConfig", Map.of(
-                    "temperature", 0.5, "maxOutputTokens", 500
-            ));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    url, new HttpEntity<>(request, headers), Map.class);
-
-            List<Map> candidates = (List<Map>) response.getBody().get("candidates");
-            Map content = (Map) candidates.get(0).get("content");
-            List<Map> parts = (List<Map>) content.get("parts");
-            return (String) parts.get(0).get("text");
-
-        } catch (Exception e) {
-            System.err.println("Erreur Gemini: " + e.getMessage());
-            return "{}";
-        }
+        // Mode offline : retourne {} pour activer le fallback local
+        return "{}";
     }
 
     private String callGeminiPrediction(double moyenne, String tendance) {

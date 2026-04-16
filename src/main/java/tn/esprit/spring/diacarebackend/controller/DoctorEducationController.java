@@ -1,8 +1,8 @@
 package tn.esprit.spring.diacarebackend.controller;
 
-import tn.esprit.spring.diacarebackend.DTOs.*;
+import tn.esprit.spring.diacarebackend.dto.*;
 import tn.esprit.spring.diacarebackend.entities.*;
-import tn.esprit.spring.diacarebackend.Service.NotificationService;
+import tn.esprit.spring.diacarebackend.services.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;

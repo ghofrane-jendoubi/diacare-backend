@@ -1,7 +1,7 @@
 package tn.esprit.spring.diacarebackend.controller;
 
 import tn.esprit.spring.diacarebackend.entities.ChatbotMessage;
-import tn.esprit.spring.diacarebackend.Service.ChatbotService;
+import tn.esprit.spring.diacarebackend.services.ChatbotService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,8 +1,8 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
-import tn.esprit.spring.diacarebackend.DTOs.ContentEmotionStatsDTO;
-import tn.esprit.spring.diacarebackend.DTOs.ContentFeedbackRequestDTO;
-import tn.esprit.spring.diacarebackend.DTOs.EmotionalDashboardDTO;
+import tn.esprit.spring.diacarebackend.dto.ContentEmotionStatsDTO;
+import tn.esprit.spring.diacarebackend.dto.ContentFeedbackRequestDTO;
+import tn.esprit.spring.diacarebackend.dto.EmotionalDashboardDTO;
 import tn.esprit.spring.diacarebackend.entities.ContentFeedback;
 import tn.esprit.spring.diacarebackend.entities.Emotion;
 import tn.esprit.spring.diacarebackend.entities.EducationalContent;

@@ -1,6 +1,6 @@
 package tn.esprit.spring.diacarebackend.controller;
 
-import tn.esprit.spring.diacarebackend.DTOs.LoginRequest;
+import tn.esprit.spring.diacarebackend.dto.LoginRequest;
 import tn.esprit.spring.diacarebackend.entities.User;
 import tn.esprit.spring.diacarebackend.repository.UserRepository;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package tn.esprit.spring.diacarebackend.controller;
 
 import tn.esprit.spring.diacarebackend.entities.GlycemieRecord;
-import tn.esprit.spring.diacarebackend.Service.IaDashboardService;
+import tn.esprit.spring.diacarebackend.services.IaDashboardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;

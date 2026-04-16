@@ -1,9 +1,10 @@
-package tn.esprit.spring.diacarebackend.Service;
+package tn.esprit.spring.diacarebackend.services;
 
-import tn.esprit.spring.diacarebackend.DTOs.ContentEmotionStatsDTO;
-import tn.esprit.spring.diacarebackend.DTOs.EmotionalDashboardDTO;
-import tn.esprit.spring.diacarebackend.DTOs.PatientFeedbackDto;
-import tn.esprit.spring.diacarebackend.DTOs.FeedbackRequest;
+import tn.esprit.spring.diacarebackend.dto.ContentEmotionStatsDTO;
+import tn.esprit.spring.diacarebackend.dto.EmotionalDashboardDTO;
+import tn.esprit.spring.diacarebackend.dto.PatientFeedbackDto;
+import tn.esprit.spring.diacarebackend.dto.FeedbackRequest;
+import tn.esprit.spring.diacarebackend.dto.EmotionalEvolutionDTO;
 import tn.esprit.spring.diacarebackend.entities.ContentFeedback;
 import tn.esprit.spring.diacarebackend.entities.Emotion;
 import tn.esprit.spring.diacarebackend.entities.AppUser;
@@ -11,10 +12,14 @@ import tn.esprit.spring.diacarebackend.entities.EducationalContent;
 import tn.esprit.spring.diacarebackend.repository.ContentFeedbackRepository;
 import tn.esprit.spring.diacarebackend.repository.EducationalContentRepository;
 import tn.esprit.spring.diacarebackend.repository.AppUserRepository;
+import tn.esprit.spring.diacarebackend.repository.PatientEmotionalStateRepository;
+import tn.esprit.spring.diacarebackend.entities.PatientEmotionalState;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -28,13 +33,16 @@ public class EmotionFeedbackService {
     private final ContentFeedbackRepository feedbackRepository;
     private final EducationalContentRepository contentRepository;
     private final AppUserRepository appUserRepository;
+    private final PatientEmotionalStateRepository emotionalStateRepository;
 
     public EmotionFeedbackService(ContentFeedbackRepository feedbackRepository,
                                   EducationalContentRepository contentRepository,
-                                  AppUserRepository appUserRepository) {
+                                  AppUserRepository appUserRepository,
+                                  PatientEmotionalStateRepository emotionalStateRepository) {
         this.feedbackRepository = feedbackRepository;
         this.contentRepository = contentRepository;
         this.appUserRepository = appUserRepository;
+        this.emotionalStateRepository = emotionalStateRepository;
     }
 
     public boolean hasFeedback(Long contentId, Long userId) {
@@ -73,11 +81,38 @@ public class EmotionFeedbackService {
         feedback.setComment(request.getComment());
 
         try {
-            return feedbackRepository.save(feedback);
+            ContentFeedback savedFeedback = feedbackRepository.save(feedback);
+            // Mettre à jour l'état émotionnel du patient
+            updateEmotionalState(userId);
+            return savedFeedback;
         } catch (DataIntegrityViolationException e) {
             return feedbackRepository.findByPatientIdAndContentId(userId, contentId)
                     .orElseThrow(() -> new IllegalStateException("Impossible de récupérer le feedback existant", e));
         }
+    }
+
+    private void updateEmotionalState(Long patientId) {
+        // Récupérer les 5 derniers feedbacks du patient
+        List<ContentFeedback> lastFeedbacks = feedbackRepository.findTop5ByPatientIdOrderByCreatedAtDesc(patientId);
+        if (lastFeedbacks.isEmpty()) return;
+
+        double sum = 0.0;
+        for (ContentFeedback fb : lastFeedbacks) {
+            switch (fb.getEmotion()) {
+                case HAPPY -> sum += 1.0;
+                case SAD -> sum += -1.0;
+                default -> sum += 0.0;
+            }
+        }
+        double avg = sum / lastFeedbacks.size();
+
+        PatientEmotionalState state = emotionalStateRepository.findByPatientId(patientId)
+                .orElse(new PatientEmotionalState());
+        state.setPatientId(patientId);
+        state.setAverageScore(avg);
+        state.setLastFeedbacksCount(lastFeedbacks.size());
+        state.setLastUpdate(LocalDateTime.now());
+        emotionalStateRepository.save(state);
     }
 
     public EmotionalDashboardDTO getEmotionalDashboard() {
@@ -205,5 +240,34 @@ public class EmotionFeedbackService {
         }
 
         return "Patient";
+    }
+
+    // ===== MÉTHODE POUR LE DASHBOARD MÉDECIN - ÉVOLUTION ÉMOTIONNELLE =====
+
+    public List<EmotionalEvolutionDTO> getEmotionalEvolution(Long patientId) {
+        if (patientId == null) {
+            return new ArrayList<>();
+        }
+
+        // Récupérer tous les feedbacks du patient triés par date
+        List<ContentFeedback> feedbacks = feedbackRepository.findByPatientIdOrderByCreatedAtAsc(patientId);
+        List<EmotionalEvolutionDTO> evolution = new ArrayList<>();
+
+        for (ContentFeedback fb : feedbacks) {
+            double score = switch (fb.getEmotion()) {
+                case HAPPY -> 1.0;
+                case SAD -> -1.0;
+                default -> 0.0;
+            };
+
+            evolution.add(new EmotionalEvolutionDTO(
+                fb.getCreatedAt(),
+                score,
+                fb.getContentId(),
+                fb.getEmotion() != null ? fb.getEmotion().name() : "NEUTRAL"
+            ));
+        }
+
+        return evolution;
     }
 }
