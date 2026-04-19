@@ -32,13 +32,12 @@ public class DietPlan {
     private Integer targetFat;
 
 
-    @JsonIgnore
+
     @ManyToOne
     @JoinColumn(name = "patient_id")
     private User patient;
 
     @ManyToOne
-    @JsonIgnore
     @JoinColumn(name = "nutritionist_id")
     private User nutritionist;
 

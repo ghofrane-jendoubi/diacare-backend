@@ -38,6 +38,7 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -51,6 +52,8 @@
 
 
 >>>>>>> 8c36957ef6e0b23f6c4b647ce9df20e776b95453
+=======
+>>>>>>> origin/raniasuzy
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -63,11 +66,14 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
+<<<<<<< HEAD
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
         <dependency>
+=======
+>>>>>>> origin/raniasuzy
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
@@ -136,7 +142,16 @@
             <artifactId>deeplearning4j-core</artifactId>
             <version>1.0.0-M2.1</version>
         </dependency>
+<<<<<<< HEAD
     </dependencies>
+=======
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+    </dependencies>
+
+>>>>>>> origin/raniasuzy
     <build>
         <plugins>
             <plugin>

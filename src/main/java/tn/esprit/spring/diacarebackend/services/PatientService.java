@@ -154,6 +154,11 @@ public class PatientService {
     public Map<String, Object> getPatientById(Long id) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Patient introuvable"));
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", patient.getId());
+        response.put("firstName", patient.getFirstName());
+        response.put("lastName", patient.getLastName());
+        response.put("email", patient.getEmail());
         return buildPatientResponse(patient);
     }
 
@@ -233,22 +238,29 @@ public class PatientService {
     // =================== UPLOAD PHOTO ===================
 
 
+    // PatientService.java
     public Map<String, Object> uploadPhoto(Long id, MultipartFile file) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Patient introuvable"));
 
+        // Vérifier le type de fichier
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/"))
+        if (contentType == null || !contentType.startsWith("image/")) {
             throw new RuntimeException("Le fichier doit être une image");
+        }
 
-        if (file.getSize() > 5 * 1024 * 1024)
+        // Limiter la taille (5MB max)
+        if (file.getSize() > 5 * 1024 * 1024) {
             throw new RuntimeException("L'image ne doit pas dépasser 5 MB");
+        }
 
         try {
-            // ✅ Utiliser le chemin absolu par rapport au projet
-            Path uploadPath = Paths.get(System.getProperty("user.dir"), UPLOAD_DIR);
-            if (!Files.exists(uploadPath))
+            // Créer le dossier si nécessaire
+            String uploadDir = "uploads/patients/";
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+            }
 
             // Supprimer l'ancienne photo si elle existe
             if (patient.getProfilePicture() != null) {
@@ -264,13 +276,18 @@ public class PatientService {
             String fileName = "patient_" + id + "_" + System.currentTimeMillis() + extension;
             Path filePath = uploadPath.resolve(fileName);
 
-            // Copier le fichier
+            // Sauvegarder le fichier
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // ✅ Chemin relatif correct (sans slash au début pour l'URL)
+            // Chemin relatif pour la base de données
             String relativePath = "/uploads/patients/" + fileName;
             patient.setProfilePicture(relativePath);
+
+            // ✅ Sauvegarder en base
             patientRepository.save(patient);
+
+            System.out.println("✅ Photo sauvegardée: " + relativePath);
+            System.out.println("✅ Patient ID: " + patient.getId());
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Photo mise à jour avec succès");
@@ -280,8 +297,10 @@ public class PatientService {
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("Erreur upload : " + e.getMessage());
+            
         }
     }
+
 
 
 

@@ -44,9 +44,16 @@ public class NutritionistSignupController {
         return ResponseEntity.ok(service.activateAccount(token));
     }
 
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
-        return ResponseEntity.ok(service.login(request.get("email"), request.get("password")));
+        Map<String, Object> loginResponse = service.login(request.get("email"), request.get("password"));
+
+        if (!loginResponse.containsKey("role")) {
+            loginResponse.put("role", "NUTRITIONIST");
+        }
+
+        return ResponseEntity.ok(loginResponse);
     }
 
     @PutMapping("/certificate/approve/{id}")
