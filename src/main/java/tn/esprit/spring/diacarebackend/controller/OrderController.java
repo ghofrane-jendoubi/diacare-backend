@@ -2,6 +2,7 @@ package tn.esprit.spring.diacarebackend.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.spring.diacarebackend.entities.Order;
 import tn.esprit.spring.diacarebackend.entities.OrderStatus;
@@ -87,4 +88,8 @@ public class OrderController {
         Order order = orderService.cancelOrder(id);
         return ResponseEntity.ok(order);
     }
-}
+    @GetMapping("/admin/paid-orders")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Order> getPaidOrders() {
+        return orderService.getPaidOrders();
+    }}

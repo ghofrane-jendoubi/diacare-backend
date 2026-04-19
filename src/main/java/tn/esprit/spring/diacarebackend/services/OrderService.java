@@ -15,4 +15,7 @@ public interface OrderService {
     Order getOrderById(Long id);
     Order confirmOrder(Long id);
     Order cancelOrder(Long id);
+     void markOrderAsPaid(Long orderId);
+    List<Order> getPaidOrders();
+
 }

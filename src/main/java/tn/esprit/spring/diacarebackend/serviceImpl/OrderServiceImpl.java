@@ -6,10 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tn.esprit.spring.diacarebackend.entities.*;
 import tn.esprit.spring.diacarebackend.repository.OrderRepository;
-import tn.esprit.spring.diacarebackend.services.CartService;
-import tn.esprit.spring.diacarebackend.services.EmailService;
-import tn.esprit.spring.diacarebackend.services.OrderService;
-import tn.esprit.spring.diacarebackend.services.UserService;
+import tn.esprit.spring.diacarebackend.services.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +20,9 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final OrderRepository orderRepository;
     private final UserService userService;
+    private DeliveryService deliveryService;
+;
+
 
     // 🔥 CREATE ORDER (CHECKOUT)
     @Override
@@ -118,11 +118,7 @@ public class OrderServiceImpl implements OrderService {
 
         return savedOrder;
     }
-    @Override
-    public Order getOrderById(Long id) {
-        return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-    }
+
     @Override
     public Order confirmOrder(Long id) {
         Order order = orderRepository.findById(id)
@@ -144,5 +140,24 @@ public class OrderServiceImpl implements OrderService {
 
         return orderRepository.save(order);
     }
+    @Override
+    public Order getOrderById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+    }
+    // In OrderService or PaymentService
+    @Override
+    public void markOrderAsPaid(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        order.setStatus(OrderStatus.PAID);  // use your enum
+        orderRepository.save(order);
 
+        // 🔥 Create delivery record
+        deliveryService.createDelivery(order);
+    }
+    @Override
+    public List<Order> getPaidOrders() {
+        return orderRepository.findByStatus(OrderStatus.PAID);
+    }
 }
