@@ -75,4 +75,8 @@ public class User {
         this.firstName = firstName;
         this.lastName = lastName;
     }
+
+    public void setName(String defaultUser) {
+
+    }
 }

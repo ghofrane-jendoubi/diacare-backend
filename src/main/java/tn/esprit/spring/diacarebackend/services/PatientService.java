@@ -297,7 +297,7 @@ public class PatientService {
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("Erreur upload : " + e.getMessage());
-            
+
         }
     }
 
