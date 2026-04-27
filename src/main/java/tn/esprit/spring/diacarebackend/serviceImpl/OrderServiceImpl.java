@@ -129,13 +129,17 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Envoyer l'email de confirmation
+        // Send email SYNC (wait for it to complete)
         String recipient = (email != null && !email.isEmpty()) ? email : order.getUser().getEmail();
         if (recipient != null && !recipient.isEmpty()) {
             try {
+                // Call email service synchronously
                 emailService.sendOrderConfirmationEmail(recipient, order.getId());
                 emailService.sendOrderEmail(recipient, savedOrder.getId(), savedOrder.getTotalPrice());
                 log.info("Payment confirmation email sent to: {}", recipient);
+
+                // Small delay to ensure email is processed
+                Thread.sleep(1000);
             } catch (Exception e) {
                 log.error("Failed to send payment confirmation email: {}", e.getMessage());
             }

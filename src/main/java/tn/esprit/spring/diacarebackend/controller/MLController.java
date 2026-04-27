@@ -220,26 +220,134 @@ public class MLController {
         return empty;
     }
 
-    // ==================== IMAGE ANALYSIS ====================
+    // ==================== IMAGE ANALYSIS (CORRIGÉE) ====================
     @PostMapping("/analyze-image")
     public ResponseEntity<Map<String, Object>> analyzeByImage(@RequestParam("image") MultipartFile image) {
         Map<String, Object> response = new HashMap<>();
         try {
-            String foodName = callFoodRecognitionService(image);
+            log.info("📸 Début analyse image: {}", image.getOriginalFilename());
+            log.info("📤 Appel du service YOLO à: {}", foodRecognitionUrl);
+
+            // Appeler le service YOLO avec timeout
+            String foodName = callFoodRecognitionServiceWithTimeout(image);
+
+            log.info("🔍 Aliment reconnu par YOLO: '{}'", foodName);
+
             if (foodName == null || foodName.isEmpty()) {
+                log.warn("⚠️ Aucun aliment reconnu dans l'image");
                 response.put("error", "Aucun aliment reconnu dans l'image");
-                return ResponseEntity.status(404).body(response);
+                response.put("productName", "aliment_non_reconnu");
+                response.put("nutrition", getEmptyNutrition());
+                response.put("recommendation", Map.of(
+                        "message", "Aucun aliment reconnu - essayez une autre image",
+                        "is_recommended", false,
+                        "confidence", 0
+                ));
+                return ResponseEntity.ok(response);
             }
 
             // Reuse the name search logic (which already handles errors)
             Map<String, String> nameRequest = Map.of("productName", foodName);
             ResponseEntity<Map<String, Object>> nameResult = analyzeByName(nameRequest);
-            return nameResult;  // forward the response
+
+            // Add recognition info to the response
+            Map<String, Object> resultBody = nameResult.getBody();
+            if (resultBody != null) {
+                resultBody.put("recognized_from_image", foodName);
+                resultBody.put("analysis_method", "image_recognition");
+                resultBody.put("yolo_service_status", "connected");
+            }
+
+            log.info("✅ Analyse image terminée avec succès");
+            return nameResult;
 
         } catch (Exception e) {
-            log.error("Error analyzing image: {}", e.getMessage(), e);
-            response.put("error", e.getMessage());
+            log.error("❌ Erreur analyse image: {}", e.getMessage(), e);
+            response.put("error", "Erreur lors de l'analyse de l'image: " + e.getMessage());
+            response.put("productName", "erreur_analyse");
+            response.put("nutrition", getEmptyNutrition());
+            response.put("recommendation", Map.of(
+                    "message", "Service de reconnaissance temporairement indisponible",
+                    "is_recommended", false,
+                    "confidence", 0
+            ));
             return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ==================== FOOD RECOGNITION SERVICE (YOLO) AVEC TIMEOUT ====================
+    private String callFoodRecognitionServiceWithTimeout(MultipartFile image) throws Exception {
+        String url = foodRecognitionUrl + "/recognize";
+
+        // Créer un RestTemplate avec timeout
+        RestTemplate customRestTemplate = new RestTemplate();
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000); // 5 secondes de connexion
+        factory.setReadTimeout(10000);   // 10 secondes de lecture
+        customRestTemplate.setRequestFactory(factory);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(image.getBytes()) {
+            @Override
+            public String getFilename() {
+                return image.getOriginalFilename();
+            }
+        });
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        log.info("📤 Envoi de l'image à YOLO: {}", image.getOriginalFilename());
+
+        try {
+            ResponseEntity<Map> response = customRestTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
+
+            log.info("📥 Réponse YOLO reçue - Status: {}", response.getStatusCode());
+            log.info("📥 Corps de réponse: {}", response.getBody());
+
+            if (response.getBody() != null) {
+                // Vérifier différents formats de réponse possibles
+                if (response.getBody().containsKey("success") && Boolean.TRUE.equals(response.getBody().get("success"))) {
+                    String foodName = (String) response.getBody().get("food_name");
+                    if (foodName != null && !foodName.isEmpty()) {
+                        return foodName;
+                    }
+                }
+
+                // Essayer d'autres formats
+                if (response.getBody().containsKey("food_name")) {
+                    String foodName = (String) response.getBody().get("food_name");
+                    if (foodName != null && !foodName.isEmpty()) {
+                        return foodName;
+                    }
+                }
+
+                if (response.getBody().containsKey("detected_food")) {
+                    String foodName = (String) response.getBody().get("detected_food");
+                    if (foodName != null && !foodName.isEmpty()) {
+                        return foodName;
+                    }
+                }
+
+                // Si la réponse contient une liste d'aliments détectés
+                if (response.getBody().containsKey("detected_foods")) {
+                    @SuppressWarnings("unchecked")
+                    List<String> detectedFoods = (List<String>) response.getBody().get("detected_foods");
+                    if (detectedFoods != null && !detectedFoods.isEmpty()) {
+                        return detectedFoods.get(0);
+                    }
+                }
+            }
+
+            log.warn("⚠️ Format de réponse YOLO non reconnu");
+            return null;
+
+        } catch (Exception e) {
+            log.error("❌ Erreur appel YOLO: {}", e.getMessage());
+            throw new Exception("YOLO service error: " + e.getMessage());
         }
     }
 
@@ -264,26 +372,6 @@ public class MLController {
             error.put("is_recommended", false);
             return error;
         }
-    }
-
-    // ==================== FOOD RECOGNITION SERVICE (YOLO) ====================
-    private String callFoodRecognitionService(MultipartFile image) throws Exception {
-        String url = foodRecognitionUrl + "/recognize";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new ByteArrayResource(image.getBytes()) {
-            @Override
-            public String getFilename() {
-                return image.getOriginalFilename();
-            }
-        });
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
-        if (response.getBody() != null && Boolean.TRUE.equals(response.getBody().get("success"))) {
-            return (String) response.getBody().get("food_name");
-        }
-        return null;
     }
 
     // ==================== OPEN FOOD FACTS HELPERS ====================
@@ -311,6 +399,32 @@ public class MLController {
     public ResponseEntity<Map<String, String>> health() {
         Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
+        response.put("yolo_service_url", foodRecognitionUrl);
+        response.put("ml_service_url", mlServiceUrl);
         return ResponseEntity.ok(response);
+    }
+
+    // Endpoint pour tester YOLO directement
+    // Endpoint pour tester YOLO directement
+    @GetMapping("/test-yolo")
+    public ResponseEntity<Map<String, Object>> testYoloService() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String url = foodRecognitionUrl + "/";
+            ResponseEntity<String> testResponse = restTemplate.getForEntity(url, String.class);
+
+            response.put("yolo_service_status", "UP");
+            response.put("url", foodRecognitionUrl);
+            response.put("status_code", testResponse.getStatusCode().value()); // ✅ CORRECTION ICI
+            response.put("response_preview", testResponse.getBody());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("yolo_service_status", "DOWN");
+            response.put("url", foodRecognitionUrl);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+
     }
 }
